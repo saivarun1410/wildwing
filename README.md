@@ -22,6 +22,8 @@ python3 -m http.server 8000 --directory dist
 
 Then open `http://localhost:8000`.
 
+Run the dependency-free smoke tests with `npm test`.
+
 ## Controls
 
 | Input | Action |
