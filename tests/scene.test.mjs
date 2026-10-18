@@ -4,6 +4,7 @@ import { createEnvironment, createBirdVisual, animateBirdVisual } from '../src/s
 import { createBird } from '../src/simulation.js';
 import * as THREE from 'three';
 import { addLandAnimals, updateLandAnimals, addWaterfalls } from '../src/ecosystem.js';
+import { treeSites } from '../src/world.js';
 
 test('3D world constructs, streams terrain, and animates bird models', () => {
   const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;
@@ -12,6 +13,10 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     const renderer = { shadowMap: {} };
     const world = createEnvironment(123456, renderer);
     const bird = createBird(world.home, 123456);
+    bird.nestProgress = 2;
+    world.update(bird, 0);
+    assert.equal(world.homeVisual.nest.visible, true);
+    assert.deepEqual(world.homeVisual.stages.map(stage => stage.visible), [true, true, false, false, false]);
     const visual = createBirdVisual();
     world.scene.add(visual);
     world.update(bird, 0);
@@ -19,14 +24,23 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     let fishMesh, stars;
     world.scene.traverse(object => {
       if (object.userData.kind === 'fish' && object.count > 0 && !fishMesh) fishMesh = object;
-      if (object.isPoints) stars = object;
+      if (object.userData.kind === 'stars') stars = object;
     });
     assert.ok(fishMesh && stars);
+    let grandFalls;
+    world.scene.traverse(object => { if (object.userData.landmark === 'grand-falls') grandFalls = object; });
+    assert.ok(grandFalls, 'the coastal waterfall should be present in the world');
     const beforeFish = fishMesh.instanceMatrix.array.slice(0, 16);
     world.update(bird, .2);
     assert.notDeepEqual([...fishMesh.instanceMatrix.array.slice(0, 16)], [...beforeFish], 'fish should move in water');
     world.update(bird, 180);
     assert.ok(stars.material.opacity > .5, 'stars should appear at night');
+    assert.equal(world.toggleNight(), true);
+    world.update(bird, 0);
+    assert.ok(stars.material.opacity > .5, 'night shortcut should show stars immediately');
+    assert.equal(world.toggleNight(), false);
+    world.update(bird, 0);
+    assert.ok(stars.material.opacity < .1, 'day shortcut should restore daylight');
     assert.ok(world.sites.trees.length > 20);
     assert.ok(world.sites.fish.length > 0);
     assert.equal(visual.position.x, bird.x);
@@ -35,11 +49,19 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     assert.ok(!world.sites.fish.some(site => site.id === firstFish.id));
     bird.x = 2000; bird.z = 2000;
     world.update(bird, 10);
-    assert.ok(world.sites.trees.length > 0);
+    assert.equal(world.sites.trees.length, 0, 'the ocean should not contain trees');
+    assert.ok(world.sites.fish.length > 0, 'ocean tiles should contain fish');
     assert.ok(world.scene.children.length < 100);
   } finally {
     globalThis.innerWidth = oldWidth; globalThis.innerHeight = oldHeight;
   }
+});
+
+test('tree distribution makes mixed groves rather than one repeated tree', () => {
+  const sites = [];
+  for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) sites.push(...treeSites(x, z, 123456));
+  assert.deepEqual([...new Set(sites.map(tree => tree.species))].sort(), ['birch', 'oak', 'pine', 'willow']);
+  assert.ok(sites.length > 150 && sites.length < 600);
 });
 
 test('land animals and waterfalls populate streamed terrain', () => {

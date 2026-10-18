@@ -9,11 +9,21 @@ export function hash2(x, z, seed = 1) {
 
 const smooth = t => t * t * (3 - 2 * t);
 const mix = (a, b, t) => a + (b - a) * t;
+const clamp01 = t => Math.max(0, Math.min(1, t));
 
 export function noise(x, z, seed = 1) {
   const ix = Math.floor(x), iz = Math.floor(z), fx = smooth(x - ix), fz = smooth(z - iz);
   return mix(mix(hash2(ix, iz, seed), hash2(ix + 1, iz, seed), fx),
     mix(hash2(ix, iz + 1, seed), hash2(ix + 1, iz + 1, seed), fx), fz) * 2 - 1;
+}
+
+export function oceanCoast(z, seed = 1) {
+  return 610 + noise(z / 480, 7, seed + 470) * 105 + noise(z / 130, 13, seed + 471) * 34;
+}
+
+export function greatFallsSite(seed = 1) {
+  const z = -160;
+  return { x: oceanCoast(z, seed) - 38, z, width: 36 };
 }
 
 export function terrainHeight(x, z, seed = 1) {
@@ -43,6 +53,18 @@ export function terrainHeight(x, z, seed = 1) {
   }
   const mountain = Math.max(0, noise(x / 370 + 8, z / 370 - 5, seed + 55) - .2);
   height += mountain * mountain * 68 * Math.min(1, Math.hypot(x, z) / 350);
+  const ridgeLine = -360 + noise(x / 220, 3, seed + 811) * 68;
+  const ridge = Math.exp(-Math.pow((z - ridgeLine) / 155, 2));
+  const summits = Math.max(0, noise(x / 105, z / 145, seed + 812) + .35);
+  height += ridge * (35 + summits * 58);
+  const coast = oceanCoast(z, seed);
+  const fallCenter = greatFallsSite(seed);
+  const fallBand = Math.exp(-Math.pow((z - fallCenter.z) / 56, 4));
+  const rise = smooth(clamp01((x - fallCenter.x + 140) / 105));
+  const drop = smooth(clamp01((x - fallCenter.x) / 30));
+  height += fallBand * (rise * (1 - drop) * 31 - drop * 27);
+  const offshore = smooth(clamp01((x - coast + 22) / 135));
+  height = mix(height, -16 - Math.max(0, x - coast) * .025, offshore);
   const sanctuary = Math.exp(-(x * x + z * z) / (2 * 32 * 32));
   height += sanctuary * Math.max(0, 9 - height);
   return height;
@@ -50,13 +72,21 @@ export function terrainHeight(x, z, seed = 1) {
 
 export function treeSites(tx, tz, seed = 1) {
   const sites = [];
-  for (let i = 0; i < 19; i++) {
-    const x = (tx + .04 + hash2(tx * 43 + i, tz * 41, seed + 101) * .92) * TILE_SIZE;
-    const z = (tz + .04 + hash2(tx * 37, tz * 47 + i, seed + 102) * .92) * TILE_SIZE;
+  for (let i = 0; i < 54; i++) {
+    const x = (tx + .025 + hash2(tx * 43 + i, tz * 41, seed + 101) * .95) * TILE_SIZE;
+    const z = (tz + .025 + hash2(tx * 37, tz * 47 + i, seed + 102) * .95) * TILE_SIZE;
     const y = terrainHeight(x, z, seed);
     if (y < 1.5 || y > 33 || Math.hypot(x, z) < 12) continue;
-    const scale = .72 + hash2(tx * 31 + i, tz * 29, seed + 103) * .8;
-    sites.push({ id: `tree:${tx}:${tz}:${i}`, x, y, z, scale, branch: { x: x + scale * 3.9, y: y + scale * 8.2, z: z + scale * 1.5 } });
+    const grove = noise(x / 125, z / 125, seed + 301);
+    const density = Math.max(.1, Math.min(.68, .34 + grove * .35));
+    if (hash2(tx * 31 + i, tz * 29, seed + 103) > density) continue;
+    if (sites.some(tree => Math.hypot(tree.x - x, tree.z - z) < 6.5)) continue;
+    const nearWater = Math.min(terrainHeight(x + 13, z, seed), terrainHeight(x - 13, z, seed), terrainHeight(x, z + 13, seed), terrainHeight(x, z - 13, seed)) < 2;
+    const roll = hash2(tx * 17 + i, tz * 23, seed + 104);
+    const species = y > 22 ? 'pine' : nearWater && roll < .5 ? 'willow' : roll < .25 ? 'birch' : roll < .47 ? 'pine' : 'oak';
+    const scale = .65 + hash2(tx * 31 + i, tz * 29, seed + 105) * .75;
+    const branchHeight = species === 'birch' ? 9.4 : species === 'willow' ? 7.5 : 8.2;
+    sites.push({ id: `tree:${tx}:${tz}:${i}`, x, y, z, scale, species, branch: { x: x + scale * 3.9, y: y + scale * branchHeight, z: z + scale * 1.5 } });
   }
   return sites;
 }

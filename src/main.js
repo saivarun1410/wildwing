@@ -90,6 +90,7 @@ $('#soundButton').addEventListener('click', () => {
 addEventListener('keydown', event => {
   if (event.key === 'Escape') { $('#help').hidden = true; return; }
   if (event.target instanceof HTMLInputElement) return;
+  if (event.key.toLowerCase() === 't' && running && !event.repeat) { notice(world.toggleNight() ? 'Night' : 'Daylight'); return; }
   if (event.repeat && ['f', 'p', 'h', 'j', 'n'].includes(event.key.toLowerCase())) return;
   const shortcuts = { f: 'fly', p: 'perch', h: 'hunt fish', j: 'hunt land', n: 'build nest' };
   const command = shortcuts[event.key.toLowerCase()];

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { homeSite, terrainHeight, fishSites, preySites, treeSites } from '../src/world.js';
+import { homeSite, terrainHeight, fishSites, preySites, treeSites, greatFallsSite } from '../src/world.js';
 import { createBird, issueCommand, parseCommand, updateBird } from '../src/simulation.js';
 
 const idle = { turn: 0, climb: 0, forward: 0, fast: false, flap: false };
@@ -26,6 +26,17 @@ test('terrain is deterministic and the home tree begins above water', () => {
   for (const sampleSeed of [1, 42, 123456, 999999]) assert.ok(homeSite(sampleSeed).y >= 8.9);
   assert.ok(world.fish.some(site => Math.hypot(site.x - home.x, site.z - home.z) < 220));
   assert.ok(world.prey.some(site => Math.hypot(site.x - home.x, site.z - home.z) < 150));
+});
+
+test('the eastern ocean and coastal cliff are part of the terrain', () => {
+  const falls = greatFallsSite(seed);
+  assert.ok(terrainHeight(2000, 0, seed) < -10);
+  assert.ok(terrainHeight(falls.x - 5, falls.z, seed) - terrainHeight(falls.x + 30, falls.z, seed) > 25);
+});
+
+test('the northern range rises into snowy elevations', () => {
+  const heights = [-400, -300, -200, -100, 0, 100, 200, 300, 400].map(x => terrainHeight(x, -360, seed));
+  assert.ok(Math.max(...heights) > 70);
 });
 
 test('keyboard and typed commands resolve to bird actions', () => {
@@ -56,14 +67,27 @@ test('bird can hunt water, perch, and return home', () => {
   assert.ok(until(bird, () => bird.mode === 'perched' && Math.hypot(bird.x - home.branch.x, bird.z - home.branch.z) < 2), 'home approach should finish');
 });
 
-test('nest building gathers and places five separate twigs', () => {
+test('one nest command gathers and places five separate twigs', () => {
   const bird = createBird(home, seed);
+  assert.ok(issueCommand(bird, 'build nest', world).ok);
   for (let i = 1; i <= 5; i++) {
-    assert.ok(issueCommand(bird, 'build nest', world).ok);
     assert.ok(until(bird, () => bird.nestProgress === i), `nesting trip ${i} should finish`);
-    assert.equal(bird.mode, 'perched');
+    assert.equal(bird.mode, i === 5 ? 'perched' : 'approaching');
   }
   assert.match(bird.lastEvent, /complete/);
+});
+
+test('W and S set persistent cruising speed, Shift reaches maximum speed', () => {
+  const bird = createBird(home, seed);
+  issueCommand(bird, 'fly', world);
+  for (let i = 0; i < 400; i++) updateBird(bird, { ...idle, forward: 1 }, 1 / 60);
+  assert.equal(bird.cruiseSpeed, 120);
+  for (let i = 0; i < 400; i++) updateBird(bird, idle, 1 / 60);
+  assert.ok(bird.speed > 115);
+  for (let i = 0; i < 400; i++) updateBird(bird, { ...idle, forward: -1 }, 1 / 60);
+  assert.equal(bird.cruiseSpeed, 6);
+  for (let i = 0; i < 200; i++) updateBird(bird, { ...idle, fast: true }, 1 / 60);
+  assert.ok(bird.speed > 115);
 });
 
 test('held steering does not cancel a hunt or nest task until new input arrives', () => {
@@ -81,13 +105,38 @@ test('held steering does not cancel a hunt or nest task until new input arrives'
   assert.equal(bird.goal, null);
 });
 
-test('free flight clears the trees and can climb above clouds or dive deliberately', () => {
+test('free flight cruises at cloud height and can climb higher or dive deliberately', () => {
   const bird = createBird(home, seed);
   issueCommand(bird, 'fly', world);
-  for (let i = 0; i < 300; i++) updateBird(bird, idle, 1 / 60);
-  assert.ok(bird.y >= terrainHeight(bird.x, bird.z, seed) + 19);
+  for (let i = 0; i < 900; i++) updateBird(bird, idle, 1 / 60);
+  assert.ok(bird.y >= 120);
   for (let i = 0; i < 2400; i++) updateBird(bird, { ...idle, climb: 1, fast: true }, 1 / 60);
   assert.ok(bird.y > 200, 'bird can fly higher than the cloud layer');
+  const highPoint = bird.y;
   for (let i = 0; i < 2400; i++) updateBird(bird, { ...idle, climb: -1, fast: true }, 1 / 60);
-  assert.ok(bird.y < 80, 'deliberate dive is not blocked by the canopy cruise height');
+  assert.ok(bird.y < highPoint - 300, 'deliberate dive is not blocked by the canopy cruise height');
+});
+
+test('flapping eases into a glide after takeoff and rises with active lift', () => {
+  const bird = createBird(home, seed);
+  issueCommand(bird, 'fly', world);
+  assert.equal(bird.flapStrength, 1);
+  for (let i = 0; i < 600; i++) updateBird(bird, idle, 1 / 60);
+  assert.ok(bird.flapStrength < .3);
+  for (let i = 0; i < 90; i++) updateBird(bird, { ...idle, flap: true }, 1 / 60);
+  assert.ok(bird.flapStrength > .8);
+});
+
+test('a hunt from cloud height completes as a fast swoop without hovering', () => {
+  const bird = createBird(home, seed);
+  issueCommand(bird, 'fly', world);
+  for (let i = 0; i < 900; i++) updateBird(bird, idle, 1 / 60);
+  assert.ok(issueCommand(bird, 'hunt land', world).ok);
+  let stationaryFrames = 0;
+  for (let i = 0; i < 4000 && !bird.catches; i++) {
+    if (bird.goal && Math.hypot(bird.x - bird.goal.site.x, bird.z - bird.goal.site.z) < .1) stationaryFrames++;
+    updateBird(bird, idle, 1 / 60);
+  }
+  assert.equal(bird.catches, 1);
+  assert.ok(stationaryFrames < 15, 'bird should not hover over prey while descending');
 });
