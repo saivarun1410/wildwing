@@ -8,3 +8,41 @@
 @media(max-width:1050px){.field-panel{top:45%;width:190px}.field-panel h2{font-size:25px}.map-panel{width:160px}.map-panel canvas{width:130px;height:130px}.control-note span{display:none}.action-buttons button{min-width:72px}.action-bar{bottom:24px}.command{bottom:96px}.notice{bottom:172px}}
 @media(max-width:720px){.topbar{padding:17px 18px}.identity strong{font-size:11px}.identity small{font-size:7px}.identity-mark{font-size:27px}.world-id{display:none}.top-icon{width:32px;height:32px}.welcome h1{font-size:clamp(52px,13vw,76px)}.welcome-copy{font-size:13px;max-width:330px}.field-panel{top:78px;left:18px;transform:none;width:180px}.panel-label{font-size:7px}.field-panel h2{font-size:20px;margin:9px 0 5px}.field-panel>p{font-size:10px}.field-divider{margin:9px 0}.stat,.nest-progress{font-size:8px;margin:6px 0}.field-panel .field-event{font-size:11px;margin-top:9px}.map-panel{right:18px;top:76px;width:104px;padding:7px}.map-head{font-size:7px}.map-panel canvas{width:88px;height:88px;margin:2px 0}.map-foot{display:none}.crosshair,.flight-tip{display:none}.action-bar{bottom:14px;left:10px;right:10px;display:block}.control-note{display:none}.action-buttons{width:100%;gap:4px}.action-buttons button{flex:1;min-width:0;min-height:47px;padding:4px 1px}.action-buttons kbd{font-size:11px}.action-buttons span{font-size:6px;letter-spacing:0}.command{right:10px;left:10px;width:auto;bottom:68px;padding:7px 10px 3px}.command label{font-size:7px}.command-row input{padding:7px 0;font-size:10px}.notice{bottom:137px;font-size:10px}.help-card{padding:20px}.help-card h2{font-size:30px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Strong display type, readable controls, and a compact game HUD. */
+:root{font-family:'Barlow',Arial,sans-serif}
+.loading,.identity small,.world-id,.eyebrow,.welcome-sub,.panel-label,.stat,.nest-progress,.map-head,.map-foot,.flight-tip,.control-note,.action-buttons span,.command label,.help-grid span:nth-child(odd){font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700}
+.loading{font-size:15px;letter-spacing:.16em}
+.identity strong{font:400 25px/1 'Anton',Impact,sans-serif;letter-spacing:.015em;text-shadow:2px 3px 0 #10292e}
+.identity small{font-size:10px;letter-spacing:.12em}
+.eyebrow{font-size:13px;letter-spacing:.16em}
+.welcome-card{max-width:880px}
+.welcome h1{font:400 clamp(76px,14vw,180px)/.93 'Anton',Impact,sans-serif;letter-spacing:-.025em;margin:20px 0 22px;color:#fff9e9;text-shadow:3px 4px 0 #163238,0 10px 30px #071d22bb}
+.welcome-copy{max-width:480px;font-size:18px;line-height:1.48;font-weight:500;margin:25px auto 30px}
+.primary-button{font:800 18px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.065em;min-width:230px;padding:16px 20px;text-transform:uppercase}
+.welcome-sub{font-size:12px;letter-spacing:.1em}
+.panel-label{font-size:12px;letter-spacing:.1em}
+.field-panel h2{font:400 38px/1 'Anton',Impact,sans-serif;letter-spacing:.01em;margin:15px 0 9px}
+.field-panel>p{font-size:14px;line-height:1.4;font-weight:500}
+.stat,.nest-progress{font-size:12px;letter-spacing:.05em}
+.stat strong,.nest-progress strong{font-weight:700}
+.field-panel .field-event{font:600 14px/1.35 'Barlow',Arial,sans-serif;color:#f8dfb4}
+.map-head{font-size:13px;letter-spacing:.1em}
+.map-head span:last-child{font:400 17px 'Anton',Impact,sans-serif}
+.map-foot{font-size:11px;letter-spacing:.04em}
+.flight-tip{font-size:12px;letter-spacing:.1em}
+.control-note{font-size:12px;letter-spacing:.03em}
+.control-note strong{font:700 18px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.05em}
+.action-buttons button{min-width:88px;min-height:62px}
+.action-buttons kbd,.help kbd{font:700 15px 'Barlow Condensed','Arial Narrow',sans-serif}
+.action-buttons span{font-size:12px;letter-spacing:.045em}
+.command label{font-size:12px;letter-spacing:.07em}
+.command-row>span{font:400 24px 'Anton',Impact,sans-serif}
+.command-row input{font-size:14px}
+.notice{font-size:14px}
+.help-card h2{font:400 46px/1 'Anton',Impact,sans-serif;letter-spacing:.01em}
+.help-card p{font-size:15px;line-height:1.5}
+.help-grid{font-size:14px}
+.help-grid span:nth-child(odd){font-size:15px}
+@media(max-width:1050px){.field-panel h2{font-size:30px}.action-buttons button{min-width:74px}}
+@media(max-width:720px){.identity strong{font-size:19px}.identity small{font-size:9px}.welcome h1{font-size:clamp(59px,14vw,96px)}.welcome-copy{font-size:15px}.welcome-sub{font-size:10px}.panel-label{font-size:10px}.field-panel h2{font-size:25px}.field-panel>p{font-size:11px}.stat,.nest-progress{font-size:10px}.field-panel .field-event{font-size:11px}.map-head{font-size:10px}.action-buttons button{min-width:0;min-height:50px}.action-buttons kbd{font-size:13px}.action-buttons span{font-size:10px}.command label{font-size:10px}.command-row input{font-size:12px}.notice{font-size:12px}.help-card h2{font-size:38px}.help-card p{font-size:13px}}

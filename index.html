@@ -5,72 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#172a32">
   <meta name="description" content="Explore a vast living wilderness as a bird. Fly, perch, hunt, and build a nest in a procedural world.">
-  <title>Wildwing — A Living Bird World</title>
+  <title>Wildwing — Bird Simulator</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
     <div id="scene" aria-label="Interactive three-dimensional wilderness with birds, forests, and lakes"></div>
     <div class="vignette" aria-hidden="true"></div>
-    <div class="loading" id="loading"><span class="loading-mark">✺</span><span>GROWING THE WILDERNESS</span></div>
+    <div class="loading" id="loading"><span class="loading-mark">✺</span><span>LOADING WORLD</span></div>
 
     <header class="topbar">
-      <div class="identity"><span class="identity-mark">✺</span><div><strong>WILDWING</strong><small>A LIVING BIRD WORLD</small></div></div>
+      <div class="identity"><span class="identity-mark">✺</span><div><strong>WILDWING</strong><small>BIRD SIMULATOR</small></div></div>
       <div class="top-right"><span class="world-id" id="worldId">WORLD 000000</span><button class="top-icon" id="soundButton" aria-label="Toggle sound" title="Toggle sound">♪</button><button class="top-icon" id="helpButton" aria-label="Show controls" title="Show controls">?</button></div>
     </header>
 
     <section class="welcome" id="welcome" aria-labelledby="welcomeTitle">
       <div class="welcome-card">
-        <p class="eyebrow"><span></span> AN OPEN WILDERNESS <span></span></p>
-        <h1 id="welcomeTitle">The world is<br><em>yours to cross.</em></h1>
-        <p class="welcome-copy">Rise from the branches. Follow the rivers. Hunt, rest, and build a home in a world that continues beyond the horizon.</p>
-        <button id="enterButton" class="primary-button">Enter the wild <span>↗</span></button>
-        <p class="welcome-sub">YOU BEGIN PERCHED. THE NEXT MOVE IS YOURS.</p>
+        <p class="eyebrow"><span></span> BIRD SIMULATOR <span></span></p>
+        <h1 id="welcomeTitle">WILDWING</h1>
+        <p class="welcome-copy">You're a bird in a wide, open world. Fly where you want. Land on branches, hunt for food, and build a nest.</p>
+        <button id="enterButton" class="primary-button">Start playing <span>↗</span></button>
+        <p class="welcome-sub">YOU START ON A BRANCH. PRESS F TO FLY.</p>
       </div>
     </section>
 
     <main class="hud" id="hud" aria-hidden="true">
       <aside class="field-panel">
-        <div class="panel-label">FIELD JOURNAL <span class="panel-rule"></span> <span id="dayLabel">DAY 01</span></div>
-        <h2 id="modeTitle">In the canopy</h2>
-        <p id="modeDescription">Resting in the home tree. Press F to take flight.</p>
+        <div class="panel-label">STATUS <span class="panel-rule"></span> <span id="dayLabel">DAY 01</span></div>
+        <h2 id="modeTitle">Perched</h2>
+        <p id="modeDescription">At the home tree. Press F to fly.</p>
         <div class="field-divider"></div>
-        <div class="stat"><span>FLIGHT</span><strong id="speedValue">RESTING</strong></div>
-        <div class="stat"><span>ALTITUDE</span><strong id="altitudeValue">—</strong></div>
-        <div class="stat"><span>DISTANCE</span><strong id="distanceValue">0 M</strong></div>
+        <div class="stat"><span>SPEED</span><strong id="speedValue">0 M/S</strong></div>
+        <div class="stat"><span>HEIGHT</span><strong id="altitudeValue">—</strong></div>
+        <div class="stat"><span>FROM HOME</span><strong id="distanceValue">0 M</strong></div>
         <div class="field-divider"></div>
         <div class="nest-progress"><span>NEST</span><strong id="nestValue">0 / 5 TWIGS</strong></div>
         <div class="nest-track"><span id="nestTrack"></span></div>
-        <p class="field-event" id="fieldEvent">A broad world is waiting beyond the trees.</p>
+        <p class="field-event" id="fieldEvent">Perched at the home tree.</p>
       </aside>
 
-      <aside class="map-panel"><div class="map-head"><span>THE TERRITORY</span><span id="compassLabel">N</span></div><canvas id="map" width="174" height="174" aria-label="Mini-map showing the bird, trees, and water"></canvas><div class="map-foot"><span>✺ HOME</span><span>≈ WATER</span></div></aside>
+      <aside class="map-panel"><div class="map-head"><span>MAP</span><span id="compassLabel">N</span></div><canvas id="map" width="174" height="174" aria-label="Mini-map showing the bird, trees, and water"></canvas><div class="map-foot"><span>✺ HOME</span><span>≈ WATER</span></div></aside>
 
       <div class="crosshair" aria-hidden="true"><span></span><span></span></div>
-      <div class="flight-tip" id="flightTip">DRAG TO STEER YOUR FLIGHT</div>
+      <div class="flight-tip" id="flightTip">DRAG TO STEER</div>
 
       <section class="action-bar" aria-label="Bird actions">
-        <div class="control-note"><strong id="actionPrompt">PRESS F TO TAKE FLIGHT</strong><span>W / S SPEED · A / D TURN · ↑ / ↓ CLIMB · DRAG TO STEER</span></div>
+        <div class="control-note"><strong id="actionPrompt">PRESS F TO FLY</strong><span>W / S SPEED · A / D TURN · ↑ / ↓ CLIMB · DRAG TO STEER</span></div>
         <div class="action-buttons">
           <button data-command="fly" title="Take off or return to free flight"><kbd>F</kbd><span>FLY</span></button>
           <button data-command="perch" title="Land on a nearby branch"><kbd>P</kbd><span>PERCH</span></button>
-          <button data-command="hunt fish" title="Dive for fish in nearby water"><kbd>H</kbd><span>HUNT WATER</span></button>
-          <button data-command="hunt land" title="Hunt on land"><kbd>J</kbd><span>HUNT LAND</span></button>
-          <button data-command="build nest" title="Gather a twig and build your nest"><kbd>N</kbd><span>BUILD NEST</span></button>
+          <button data-command="hunt fish" title="Dive for fish in nearby water"><kbd>H</kbd><span>FISH</span></button>
+          <button data-command="hunt land" title="Hunt on land"><kbd>J</kbd><span>HUNT</span></button>
+          <button data-command="build nest" title="Gather a twig and build your nest"><kbd>N</kbd><span>NEST</span></button>
         </div>
       </section>
 
       <form class="command" id="commandForm" autocomplete="off">
-        <label for="commandInput">TELL YOUR BIRD WHAT TO DO <span>PRESS /</span></label>
+        <label for="commandInput">TYPE A COMMAND <span>PRESS /</span></label>
         <div class="command-row"><span>›</span><input id="commandInput" placeholder="fly north, perch, hunt fish, build nest…" spellcheck="false" aria-label="Type a bird command"><button type="submit" aria-label="Run command">↵</button></div>
       </form>
       <div class="notice" id="notice" role="status" aria-live="polite"></div>
     </main>
 
-    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">FIELD GUIDE</p><h2>Make your own way.</h2><p>There is no automatic journey. Your bird begins on a branch. Press <kbd>F</kbd> or <kbd>W</kbd> to take off, then steer the direction and shape of its flight.</p><div class="help-grid"><span>W / S</span><span>Speed up / slow down</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Fast flight</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer in the scene</span><span>P</span><span>Perch on a branch</span><span>H / J</span><span>Hunt water / land</span><span>N</span><span>Gather and build a nest</span><span>/</span><span>Type a command</span></div><p>Try typing <i>fly east</i>, <i>hunt fish</i>, <i>return home</i>, or <i>build nest</i>. The terrain streams as you travel, with new forests, valleys, and lakes beyond the first horizon.</p></div></div>
+    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">HOW TO PLAY</p><h2>Controls</h2><p>Press <kbd>F</kbd> or <kbd>W</kbd> to take off. You control where the bird goes and how it flies.</p><div class="help-grid"><span>W / S</span><span>Speed up / slow down</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Fly faster</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer</span><span>P</span><span>Land on a branch</span><span>H / J</span><span>Hunt in water / on land</span><span>N</span><span>Find twigs and build a nest</span><span>/</span><span>Type a command</span></div><p>You can also type <i>fly east</i>, <i>hunt fish</i>, <i>return home</i>, or <i>build nest</i>. New terrain loads as you travel.</p></div></div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

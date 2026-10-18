@@ -8,9 +8,9 @@ export function createBird(home, seed) {
   return {
     x: home.branch.x, y: home.branch.y, z: home.branch.z,
     heading: -.4, pitch: 0, bank: 0, speed: 0,
-    mode: 'perched', action: 'Resting in the canopy', goal: null,
+    mode: 'perched', action: 'At the home tree', goal: null,
     catches: 0, nestProgress: 0, twigs: 0, wingPhase: 0,
-    home, seed, lastEvent: 'A broad world is waiting beyond the trees.'
+    home, seed, lastEvent: 'Perched at the home tree.'
   };
 }
 
@@ -30,13 +30,13 @@ export function parseCommand(raw) {
 function takeoff(bird) {
   if (bird.mode === 'perched') { bird.y += 1.4; bird.speed = 10; }
   bird.mode = 'flying'; bird.goal = null; bird.action = 'Free flight';
-  bird.lastEvent = 'Wings open. The air is yours.';
+  bird.lastEvent = 'Flying.';
 }
 
 export function issueCommand(bird, raw, world) {
   const command = typeof raw === 'string' ? parseCommand(raw) : raw;
   if (command.type === 'unknown') return { ok: false, message: 'Try: fly, perch, hunt fish, hunt land, build nest, or home.' };
-  if (command.type === 'fly') { takeoff(bird); return { ok: true, message: 'Takeoff — steer with W/A/S/D and the arrow keys.' }; }
+  if (command.type === 'fly') { takeoff(bird); return { ok: true, message: 'Flying. Use W/A/S/D or drag to steer.' }; }
   if (command.type === 'direction') {
     takeoff(bird);
     bird.heading = { north: 0, east: Math.PI / 2, south: Math.PI, west: -Math.PI / 2 }[command.direction];
@@ -52,21 +52,21 @@ export function issueCommand(bird, raw, world) {
     const site = nearestSite(bird, [bird.home, ...world.trees], 190);
     if (!site) return { ok: false, message: 'No branch nearby. Fly toward a forest and try again.' };
     bird.mode = 'approaching'; bird.goal = { kind: 'perch', site }; bird.action = 'Approaching a branch';
-    return { ok: true, message: 'Seeking a branch to perch on.' };
+    return { ok: true, message: 'Heading for a branch.' };
   }
   if (command.type === 'hunt-water') {
     const site = nearestSite(bird, world.fish, 220);
     if (!site) return { ok: false, message: 'No fish nearby. Look for a lake or follow the water.' };
     if (bird.mode === 'perched') takeoff(bird);
-    bird.mode = 'approaching'; bird.goal = { kind: 'fish', site }; bird.action = 'Scanning the water';
-    return { ok: true, message: 'A fish is moving below. Diving to hunt.' };
+    bird.mode = 'approaching'; bird.goal = { kind: 'fish', site }; bird.action = 'Hunting fish';
+    return { ok: true, message: 'Diving for fish.' };
   }
   if (command.type === 'hunt-land') {
     const site = nearestSite(bird, world.prey, 220);
     if (!site) return { ok: false, message: 'No land prey nearby. Fly toward the meadow.' };
     if (bird.mode === 'perched') takeoff(bird);
-    bird.mode = 'approaching'; bird.goal = { kind: 'prey', site }; bird.action = 'Hunting over the meadow';
-    return { ok: true, message: 'A movement in the grass. Going in.' };
+    bird.mode = 'approaching'; bird.goal = { kind: 'prey', site }; bird.action = 'Hunting on land';
+    return { ok: true, message: 'Hunting on land.' };
   }
   if (command.type === 'nest') {
     if (bird.nestProgress >= 5) return { ok: true, message: 'The nest is complete. Return home to see it.' };
@@ -106,22 +106,22 @@ export function updateBird(bird, controls, dt) {
     const targetHeight = kind === 'fish' ? Math.max(point.y + 2, WATER_LEVEL + 1.1) : point.y + (kind === 'perch' || kind === 'nest' ? .4 : 1);
     climb = clamp((targetHeight - bird.y) / Math.max(6, horizontal * .45), -.85, .75);
     desiredSpeed = horizontal < 12 ? 5 + horizontal * .3 : kind === 'fish' ? 23 : 16;
-    bird.action = kind === 'fish' ? 'Diving toward the lake' : kind === 'prey' ? 'Closing on land prey' : kind === 'twig' ? 'Collecting a twig' : kind === 'nest' ? 'Returning with a twig' : 'Settling onto a branch';
+    bird.action = kind === 'fish' ? 'Diving for fish' : kind === 'prey' ? 'Hunting on land' : kind === 'twig' ? 'Picking up a twig' : kind === 'nest' ? 'Bringing a twig home' : 'Landing on a branch';
     if (horizontal < (kind === 'fish' ? 3.5 : 2.3) && Math.abs(bird.y - targetHeight) < (kind === 'fish' ? 2.4 : 1.5)) {
       bird.x = point.x; bird.z = point.z;
       if (kind === 'perch' || kind === 'nest') {
         bird.y = point.y; bird.speed = 0; bird.mode = 'perched'; bird.goal = null;
         if (kind === 'nest') {
           bird.twigs = 0; bird.nestProgress = Math.min(5, bird.nestProgress + 1);
-          bird.lastEvent = bird.nestProgress === 5 ? 'The nest is complete.' : `Twig ${bird.nestProgress} of 5 woven into the nest.`;
-          bird.action = 'Building at the home tree';
-        } else { bird.action = 'Resting on a branch'; bird.lastEvent = 'A quiet moment in the canopy.'; }
+          bird.lastEvent = bird.nestProgress === 5 ? 'Nest complete.' : `Nest: ${bird.nestProgress} of 5 twigs.`;
+          bird.action = 'At the nest';
+        } else { bird.action = 'On a branch'; bird.lastEvent = 'Landed on a branch.'; }
       } else if (kind === 'twig') {
         bird.twigs = 1; bird.goal = { kind: 'nest', site: bird.home }; bird.action = 'Carrying a twig home'; bird.y += 2.5;
-        bird.lastEvent = 'A twig is tucked carefully in the beak.';
+        bird.lastEvent = 'Twig collected.';
       } else {
         bird.catches++; bird.mode = 'flying'; bird.goal = null; bird.y += 3.5; bird.speed = 12;
-        bird.lastEvent = kind === 'fish' ? 'A silver fish caught from the water.' : 'A small meal caught in the grass.';
+        bird.lastEvent = kind === 'fish' ? 'Fish caught.' : 'Prey caught.';
         bird.action = 'Free flight';
       }
       return { type: kind, siteId: site.id, message: bird.lastEvent, x: bird.x, z: bird.z };

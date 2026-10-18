@@ -33,11 +33,11 @@ try {
     bird.heading = Number.isFinite(saved.heading) ? saved.heading : bird.heading;
     bird.nestProgress = Math.max(0, Math.min(5, Number(saved.nestProgress) || 0));
     bird.catches = Math.max(0, Number(saved.catches) || 0);
-    bird.mode = 'perched'; bird.action = 'Resting after a long journey';
+    bird.mode = 'perched'; bird.action = 'At the home tree';
     // A saved position may be in open air; settle safely on the closest ground.
     if (Math.hypot(bird.x - world.home.branch.x, bird.z - world.home.branch.z) > 5) {
       bird.mode = 'flying'; bird.speed = 12; bird.y = Math.max(bird.y, terrainHeight(bird.x, bird.z, seed) + 6);
-      bird.action = 'Returning to the journey';
+      bird.action = 'Flying';
     }
   }
 } catch { /* Optional browser storage. */ }
@@ -84,7 +84,7 @@ $('#soundButton').addEventListener('click', () => {
   soundOn = !soundOn; if (soundOn) startAudio();
   if (audio) audio.master.gain.setTargetAtTime(soundOn ? .9 : 0, audio.context.currentTime, .3);
   $('#soundButton').textContent = soundOn ? '♫' : '♪';
-  notice(soundOn ? 'Wild sounds on' : 'Wild sounds off');
+  notice(soundOn ? 'Sound on' : 'Sound off');
 });
 
 addEventListener('keydown', event => {
@@ -163,16 +163,16 @@ function updateCamera(dt) {
 }
 
 function updateHud() {
-  const mode = bird.mode === 'perched' ? (bird.nestProgress ? 'Home in the canopy' : 'In the canopy') : bird.mode === 'approaching' ? 'On a purpose' : 'Above the wild';
+  const mode = bird.mode === 'perched' ? 'Perched' : bird.mode === 'approaching' ? 'On the way' : 'Flying';
   $('#modeTitle').textContent = mode;
-  $('#modeDescription').textContent = bird.action + (bird.mode === 'perched' ? '. Press F to take flight.' : '. Steer at any time to take control.');
-  $('#speedValue').textContent = bird.mode === 'perched' ? 'RESTING' : `${Math.round(bird.speed)} M/S`;
+  $('#modeDescription').textContent = bird.action + (bird.mode === 'perched' ? '. Press F to fly.' : '.');
+  $('#speedValue').textContent = bird.mode === 'perched' ? '0 M/S' : `${Math.round(bird.speed)} M/S`;
   $('#altitudeValue').textContent = `${Math.round(Math.max(0, bird.y - terrainHeight(bird.x, bird.z, seed)))} M`;
   $('#distanceValue').textContent = `${Math.round(Math.hypot(bird.x, bird.z))} M`;
   $('#nestValue').textContent = `${bird.nestProgress} / 5 TWIGS`;
   $('#nestTrack').style.width = `${bird.nestProgress * 20}%`;
   $('#fieldEvent').textContent = bird.lastEvent;
-  $('#actionPrompt').textContent = bird.mode === 'perched' ? 'PRESS F TO TAKE FLIGHT' : bird.mode === 'approaching' ? bird.action.toUpperCase() : 'STEER INTO THE OPEN WORLD';
+  $('#actionPrompt').textContent = bird.mode === 'perched' ? 'PRESS F TO FLY' : bird.mode === 'approaching' ? bird.action.toUpperCase() : 'DRAG OR USE THE KEYS TO STEER';
   $('#compassLabel').textContent = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][((Math.round(bird.heading / (Math.PI / 4)) % 8) + 8) % 8];
 }
 
