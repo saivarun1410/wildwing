@@ -1,12 +1,14 @@
 # Wildwing
 
+[▶ Play the live demo](https://wildwing.pages.dev/?seed=123456) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains or east for the ocean and waterfall. Press `H`, `J`, or `N` to try hunting and nest building.
+
 Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across a procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
 The world streams terrain and wildlife around the bird as it travels. Groves, ponds, lakes, northern snow mountains, a broad eastern ocean, waterfalls, wispy clouds, birds, and roaming land animals are generated from a shareable world seed. A large coastal waterfall is a landmark near the ocean. A day/night cycle brings a visible sun, moon, and stars. There is no fixed map edge and no automatic flight path for the player bird.
 
 ## Play
 
-Open the [live world](https://wildwing.pages.dev/). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
+Open the [live demo](https://wildwing.pages.dev/?seed=123456). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
 
 | Control | Action |
 | --- | --- |
