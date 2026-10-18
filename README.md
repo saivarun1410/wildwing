@@ -6,7 +6,7 @@ The world streams terrain and wildlife around the bird as it travels. Forests, s
 
 ## Play
 
-Open the [live world](https://afterglow-atlas-2j6.pages.dev/). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
+Open the [live world](https://wildwing.pages.dev/). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
 
 | Control | Action |
 | --- | --- |
@@ -44,7 +44,7 @@ npm run check
 
 ```sh
 npm run build
-npx wrangler pages deploy dist --project-name afterglow-atlas --branch main
+npx wrangler pages deploy dist --project-name wildwing --branch main
 ```
 
 ## How it works
