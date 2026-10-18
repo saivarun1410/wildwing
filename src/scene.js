@@ -7,15 +7,15 @@ const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const dummy = new THREE.Object3D();
 const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6a5744, roughness: 1 });
 const branchMaterial = new THREE.MeshStandardMaterial({ color: 0x695642, roughness: 1 });
-const foliageMaterials = [0x517653, 0x66875a, 0x799261, 0x426b58].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+const foliageMaterials = [0x596749, 0x697657, 0x7b805b, 0x4b604d].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
 const birchMaterial = new THREE.MeshStandardMaterial({ color: 0xb5b2a0, roughness: 1 });
 const canopyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
 const leafMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
 const canopyPalettes = {
-  oak: [0x536f42, 0x687c46, 0x859051, 0x566f3e],
-  birch: [0x8a9c65, 0xa5ad72, 0x708c61, 0x9fab76],
-  pine: [0x314d42, 0x3e6250, 0x54705a, 0x435b4b],
-  willow: [0x5d7c53, 0x7f965d, 0x9aa86b, 0x6c8957]
+  oak: [0x4d6043, 0x596a48, 0x6e7652, 0x656b45],
+  birch: [0x71805b, 0x89916b, 0x697b5e, 0x8d8d65],
+  pine: [0x34483f, 0x3b5148, 0x4a5a4e, 0x475446],
+  willow: [0x627251, 0x74815c, 0x89906b, 0x687b56]
 };
 
 function mesh(geometry, material, parent, x = 0, y = 0, z = 0) {
@@ -103,14 +103,15 @@ function terrainTile(tx, tz, seed, consumed, detailed = true) {
   geometry.rotateX(-Math.PI / 2);
   const positions = geometry.attributes.position;
   const colors = [];
-  const sand = color(0xc0ad84), grass = color(0x738951), grass2 = color(0x8f9a61), high = color(0xa4a081), rock = color(0x777e7b), snow = color(0xe7e8e2);
+  const sand = color(0xb9a783), grass = color(0x69764f), grass2 = color(0x88895d), high = color(0x8d8e72), rock = color(0x777e7b), snow = color(0xe7e8e2);
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i) + (tx + .5) * TILE_SIZE, z = positions.getZ(i) + (tz + .5) * TILE_SIZE;
     const y = terrainHeight(x, z, seed); positions.setY(i, y);
-    const variation = .16 + (noise(x / 31, z / 31, seed + 230) + 1) * .22;
+    const variation = .15 + (noise(x / 31, z / 31, seed + 230) + 1) * .23;
+    const dry = Math.max(0, noise(x / 165, z / 165, seed + 231) * .34 + .2);
     let shade;
     if (y < .7) shade = sand.clone().lerp(grass, Math.max(0, y + 1) / 3);
-    else if (y < 17) shade = grass.clone().lerp(grass2, variation);
+    else if (y < 17) shade = grass.clone().lerp(grass2, Math.min(.85, variation + dry));
     else if (y < 30) shade = grass2.clone().lerp(high, (y - 17) / 13);
     else if (y < 50) shade = high.clone().lerp(rock, Math.min(1, (y - 30) / 20));
     else shade = rock.clone().lerp(snow, Math.min(1, (y - 50) / 21));
@@ -223,16 +224,18 @@ function addGroundDetail(group, tx, tz, seed) {
     setInstance(rocks, rockCount++, [x, y + s * .24, z], [s, s * .52, s * 1.2], hash2(i, tz, seed + 444) * 6);
   }
   rocks.count = rockCount; group.add(rocks);
-  const grassMat = new THREE.MeshStandardMaterial({ color: 0x8da575, roughness: 1, side: THREE.DoubleSide });
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
+  const grassColors = [0x66734d, 0x7b8057, 0x8d8860, 0x929071];
   const grass = new THREE.InstancedMesh(new THREE.ConeGeometry(.38, 1, 3), grassMat, 190);
   let grassCount = 0;
   for (let i = 0; i < 190; i++) {
     const x = (tx + hash2(i, tz * 23, seed + 511)) * TILE_SIZE, z = (tz + hash2(tx * 29, i, seed + 512)) * TILE_SIZE;
     const y = terrainHeight(x, z, seed), s = .5 + hash2(i, tx, seed + 513) * 1.2;
     if (y < .5 || y > 28) continue;
-    setInstance(grass, grassCount++, [x, y + s * .4, z], [s, s, s], hash2(i, tz, seed + 514) * 6);
+    setInstance(grass, grassCount, [x, y + s * .4, z], [s, s, s], hash2(i, tz, seed + 514) * 6);
+    grass.setColorAt(grassCount++, new THREE.Color(grassColors[Math.floor(hash2(i, tx + tz, seed + 515) * grassColors.length)]));
   }
-  grass.count = grassCount; grass.castShadow = false; group.add(grass);
+  grass.count = grassCount; grass.castShadow = false; if (grass.instanceColor) grass.instanceColor.needsUpdate = true; group.add(grass);
 }
 
 function addWildlife(group, fish, prey, seed) {
