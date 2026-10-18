@@ -1,55 +1,60 @@
-# Afterglow Atlas
+# Wildwing
 
-A tiny universe to wander, compose, and keep. Afterglow Atlas is a dependency-free interactive nightscape: a glass lantern glides over a moonlit sea while you place stars that gradually become your own constellation.
+Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across an expansive procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
-## What you can do
+The world streams terrain and wildlife around the bird as it travels. Forests, shorelines, lakes, distant hills, clouds, and other birds are generated from a shareable world seed. There is no fixed map edge and no automatic flight path for the player bird.
 
-- Move your pointer or touch the scene to guide the lantern. It wanders on its own when left alone.
-- Click or tap anywhere in the scene to leave a star in the sky. Nearby stars connect into a personal map.
-- Cycle between three atmospheres, each with its own sky, sea, and aurora.
-- Save the current view as a PNG or share a link that includes your world seed, atmosphere, and stars.
-- Turn the synthesized ambient soundtrack on or off, pause the scene, or visit a fresh world.
+## Play
 
-Your stars are saved in browser storage for each world seed. No account, cookies, build system, external graphics, or analytics are required. The optional Google Fonts stylesheet enhances typography; the experience still works with local fallback fonts.
+Open the [live world](https://afterglow-atlas-2j6.pages.dev/). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
 
-## Run locally
+| Control | Action |
+| --- | --- |
+| `F` or `W` | Take off; `F` also returns to free flight |
+| `W` / `S` | Fly faster / slower |
+| `A` / `D` | Turn left / right |
+| `↑` / `↓` | Climb / dive |
+| `Shift` | Fast flight |
+| `Space` | Flap for lift |
+| Drag the world | Steer the bird |
+| `P` | Find a branch and perch |
+| `H` | Hunt fish from water |
+| `J` | Hunt prey on land |
+| `N` | Gather a twig and carry it home to build the nest |
+| `/` or `Enter` | Type a command |
 
-Serve the `dist` folder with any static file server. For example:
+The command bar understands phrases such as `fly east`, `fly north`, `perch`, `hunt fish`, `hunt land`, `build nest`, and `return home`. A typed task takes the bird toward a nearby target. Steering manually returns control to you immediately.
 
-```sh
-python3 -m http.server 8000 --directory dist
-```
+The mini-map shows nearby land, water, trees, the home tree, and the bird's heading. Progress is saved locally per seed. Add `?seed=123456` to the URL to reopen a particular world.
 
-Then open `http://localhost:8000`.
+## Develop
 
-Run the dependency-free smoke tests with `npm test`.
-
-## Controls
-
-| Input | Action |
-|---|---|
-| Pointer movement / touch | Guide the lantern |
-| Click / tap | Place a star |
-| Arrow keys | Nudge the lantern |
-| Space | Pause or resume |
-| M | Toggle sound |
-| S | Save the view |
-
-The `?seed=123456` URL parameter opens a repeatable procedural world. Shared links also carry the selected atmosphere and placed stars. If your system prefers reduced motion, the experience starts paused.
-
-## Deploy
-
-The site is static. Point Cloudflare Pages at the repository with `dist` as the output directory and no build command, or deploy directly:
+Requires Node.js 22 or later.
 
 ```sh
-npx wrangler pages deploy dist --project-name afterglow-atlas
+npm ci
+npm run dev
 ```
 
-## Project structure
+```sh
+npm run check
+```
 
-- `dist/index.html` — accessible controls and content
-- `dist/styles.css` — responsive interface
-- `dist/app.js` — procedural rendering, interaction, audio, and persistence
+`npm run check` runs simulation tests and builds the production site. To deploy the static output to an existing Cloudflare Pages project:
+
+```sh
+npm run build
+npx wrangler pages deploy dist --project-name afterglow-atlas --branch main
+```
+
+## How it works
+
+- `src/world.js` creates deterministic terrain, forests, fish, land prey, and home sites.
+- `src/simulation.js` owns the bird's flight controls, task navigation, hunting, perching, and nest-building state.
+- `src/scene.js` renders streaming terrain tiles, vegetation, water, sky, birds, and the growing nest with Three.js.
+- `src/main.js` connects controls, commands, camera, mini-map, audio, and local progress.
+
+The environment and birds are procedurally modeled in a stylized naturalistic form. No external 3D model assets are required. Tree and ground detail use instanced meshes to keep draw calls bounded as terrain tiles stream in and out.
 
 ## License
 
