@@ -21,12 +21,16 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     world.scene.add(visual);
     world.update(bird, 0);
     animateBirdVisual(visual, bird, 0);
-    let fishMesh, stars;
+    let fishMesh, stars, sky, horizon;
     world.scene.traverse(object => {
       if (object.userData.kind === 'fish' && object.count > 0 && !fishMesh) fishMesh = object;
       if (object.userData.kind === 'stars') stars = object;
+      if (object.userData.kind === 'sky') sky = object;
+      if (object.userData.kind === 'horizon-terrain') horizon = object;
     });
-    assert.ok(fishMesh && stars);
+    assert.ok(fishMesh && stars && sky && horizon);
+    assert.ok(horizon.geometry.attributes.position.count > 2000, 'distant terrain should hide the streamed tile boundary');
+    assert.ok(sky.material.fragmentShader.includes('seamFreeBlend'), 'sky image should wrap without a hard join');
     let grandFalls;
     world.scene.traverse(object => { if (object.userData.landmark === 'grand-falls') grandFalls = object; });
     assert.ok(grandFalls, 'the coastal waterfall should be present in the world');

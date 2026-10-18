@@ -36,14 +36,19 @@ function makeSky(scene) {
   cloudMap.needsUpdate = true;
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false,
-    uniforms: { sunDirection: { value: v(-.7, .37, -.45).normalize() }, night: { value: 0 }, cloudMap: { value: cloudMap }, cloudAmount: { value: 0 } },
+    uniforms: { sunDirection: { value: v(-.7, .37, -.45).normalize() }, fogColor: { value: color(0xb4c2c2) }, night: { value: 0 }, cloudMap: { value: cloudMap }, cloudAmount: { value: 0 } },
     vertexShader: `varying vec3 vDir; void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-    fragmentShader: `varying vec3 vDir; uniform vec3 sunDirection; uniform float night; uniform sampler2D cloudMap; uniform float cloudAmount;
-      void main(){ float y=clamp(vDir.y,0.0,1.0); vec3 horizon=vec3(.89,.72,.53); vec3 mid=vec3(.64,.71,.72); vec3 zenith=vec3(.28,.44,.59);
-      vec3 c=mix(horizon,mid,smoothstep(.01,.35,y)); c=mix(c,zenith,smoothstep(.28,.96,y));
-      vec2 uv=vec2(atan(vDir.z,vDir.x)/6.2831853+.5,acos(clamp(vDir.y,-1.0,1.0))/3.1415926);
-      vec3 photograph=texture2D(cloudMap,uv).rgb;
-      c=mix(c,photograph,cloudAmount*smoothstep(-.12,.28,vDir.y));
+    fragmentShader: `varying vec3 vDir; uniform vec3 sunDirection; uniform vec3 fogColor; uniform float night; uniform sampler2D cloudMap; uniform float cloudAmount;
+      void main(){ float y=clamp(vDir.y,0.0,1.0); vec3 mid=vec3(.49,.68,.78); vec3 zenith=vec3(.25,.48,.72);
+      vec3 c=mix(fogColor,mid,smoothstep(.0,.48,y)); c=mix(c,zenith,smoothstep(.3,1.0,y));
+      float u=atan(vDir.z,vDir.x)/6.2831853+.5;
+      float latitude=acos(clamp(vDir.y,-1.0,1.0))/3.1415926;
+      vec3 first=texture2D(cloudMap,vec2(fract(u),latitude)).rgb;
+      vec3 second=texture2D(cloudMap,vec2(fract(u+.5),latitude)).rgb;
+      float seamFreeBlend=pow(sin(3.1415926*u),2.0);
+      vec3 photograph=mix(second,first,seamFreeBlend);
+      float horizonFade=smoothstep(.02,.45,vDir.y)*(1.0-smoothstep(.9,1.0,vDir.y));
+      c=mix(c,photograph,cloudAmount*horizonFade);
       float glow=pow(max(dot(normalize(vDir),normalize(sunDirection)),0.0),14.0);
       float sun=pow(max(dot(normalize(vDir),normalize(sunDirection)),0.0),730.0);
       c+=vec3(1.0,.48,.18)*glow*.35+vec3(1.0,.85,.59)*sun*1.7;
@@ -52,17 +57,12 @@ function makeSky(scene) {
   if (typeof document !== 'undefined') {
     new THREE.TextureLoader().load('/sky-wisps.png', texture => {
       texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
       material.uniforms.cloudMap.value = texture;
       material.uniforms.cloudAmount.value = 1;
     });
   }
-  const sky = new THREE.Mesh(geometry, material); sky.renderOrder = -100; scene.add(sky); return sky;
-}
-
-function makeClouds(scene, seed) {
-  const group = new THREE.Group(); scene.add(group);
-  // The cloud field lives on the sky dome; no repeated spherical cloud puffs.
-  return group;
+  const sky = new THREE.Mesh(geometry, material); sky.userData.kind = 'sky'; sky.renderOrder = -100; scene.add(sky); return sky;
 }
 
 function makeCelestial(scene, seed) {
@@ -372,8 +372,37 @@ function makeGrandFalls(scene, seed) {
   return { root, ribbons, spray, site };
 }
 
+function makeHorizonTerrain(tx, tz, seed, innerRadius) {
+  const positions = [], colors = [], indices = [];
+  const grass = color(0x818967), stone = color(0x898b82), snow = color(0xd8ddd8), seaFloor = color(0x64818a);
+  const outerRadius = 10, divisions = 2;
+  for (let dx = -outerRadius; dx <= outerRadius; dx++) for (let dz = -outerRadius; dz <= outerRadius; dz++) {
+    if (Math.max(Math.abs(dx), Math.abs(dz)) <= innerRadius) continue;
+    const first = positions.length / 3;
+    for (let iz = 0; iz <= divisions; iz++) for (let ix = 0; ix <= divisions; ix++) {
+      const x = (tx + dx + ix / divisions) * TILE_SIZE;
+      const z = (tz + dz + iz / divisions) * TILE_SIZE;
+      const y = terrainHeight(x, z, seed);
+      const shade = y < 0 ? seaFloor : y < 34 ? grass : y < 62 ? grass.clone().lerp(stone, (y - 34) / 28) : stone.clone().lerp(snow, Math.min(1, (y - 62) / 25));
+      positions.push(x, y, z); colors.push(shade.r, shade.g, shade.b);
+    }
+    for (let iz = 0; iz < divisions; iz++) for (let ix = 0; ix < divisions; ix++) {
+      const a = first + iz * (divisions + 1) + ix, b = a + 1, c = a + divisions + 1, d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices); geometry.computeVertexNormals();
+  const result = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }));
+  result.userData.kind = 'horizon-terrain';
+  result.frustumCulled = false;
+  return result;
+}
+
 export function createEnvironment(seed, renderer) {
-  const scene = new THREE.Scene(); scene.background = color(0xb8aca0); scene.fog = new THREE.FogExp2(0xc7b9a1, .0031);
+  const scene = new THREE.Scene(); scene.background = color(0xb4c2c2); scene.fog = new THREE.FogExp2(0xb4c2c2, .0031);
   const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, .1, 900);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.32;
@@ -381,14 +410,14 @@ export function createEnvironment(seed, renderer) {
   const sun = new THREE.DirectionalLight(0xffd3a2, 2.6); sun.position.set(-75, 150, -105); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -85; sun.shadow.camera.right = 85; sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
   sun.shadow.camera.near = .5; sun.shadow.camera.far = 380; sun.shadow.bias = -.0003; scene.add(sun, sun.target);
-  const sky = makeSky(scene), clouds = makeClouds(scene, seed), celestial = makeCelestial(scene, seed);
+  const sky = makeSky(scene), celestial = makeCelestial(scene, seed);
   const waveTexture = makeWaveTexture(seed);
   const waterGeometry = new THREE.PlaneGeometry(2800, 2800, 96, 96); waterGeometry.rotateX(-Math.PI / 2);
   const water = mesh(waterGeometry, new THREE.MeshPhysicalMaterial({ color: 0x4a7c8b, metalness: .22, roughness: .21, transparent: true, opacity: .7, clearcoat: .55, bumpMap: waveTexture, bumpScale: .32, side: THREE.DoubleSide, depthWrite: false }), scene, 0, .04, 0);
   water.castShadow = false; water.receiveShadow = true;
   const home = homeSite(seed), homeVisual = makeHome(scene, home), grandFalls = makeGrandFalls(scene, seed);
   const tiles = new Map(), consumed = new Set(), sites = { trees: [], fish: [], prey: [] };
-  let centerX = Infinity, centerZ = Infinity;
+  let centerX = Infinity, centerZ = Infinity, horizonTerrain = null;
   const radius = innerWidth < 700 ? 1 : 2;
   function disposeTile(tile) {
     scene.remove(tile.group);
@@ -398,6 +427,8 @@ export function createEnvironment(seed, renderer) {
     const tx = Math.floor(x / TILE_SIZE), tz = Math.floor(z / TILE_SIZE);
     if (tx === centerX && tz === centerZ) return;
     centerX = tx; centerZ = tz;
+    if (horizonTerrain) { scene.remove(horizonTerrain); horizonTerrain.geometry.dispose(); horizonTerrain.material.dispose(); }
+    horizonTerrain = makeHorizonTerrain(tx, tz, seed, radius + 2); scene.add(horizonTerrain);
     const wanted = new Set();
     for (let dx = -radius - 2; dx <= radius + 2; dx++) for (let dz = -radius - 2; dz <= radius + 2; dz++) {
       const px = tx + dx, pz = tz + dz, key = `${px}:${pz}`; wanted.add(key);
@@ -431,7 +462,6 @@ export function createEnvironment(seed, renderer) {
   function update(bird, time) {
     refresh(bird.x, bird.z);
     sky.position.set(bird.x, bird.y, bird.z);
-    clouds.position.set(bird.x + Math.sin(time * .018) * 30, 0, bird.z);
     celestial.group.position.set(bird.x, bird.y, bird.z);
     const angle = skyMode === 'night' ? Math.PI * 1.5 : skyMode === 'day' ? .55 : .26 + time * .018;
     const elevation = Math.sin(angle);
@@ -446,7 +476,8 @@ export function createEnvironment(seed, renderer) {
     sky.material.uniforms.night.value = night;
     hemi.intensity = 2.1 - night * 1.55;
     sun.intensity = 2.6 - night * 2.42;
-    scene.fog.color.copy(color(0xc7b9a1)).lerp(color(0x24334a), night);
+    scene.fog.color.copy(color(0xb4c2c2)).lerp(color(0x24334a), night);
+    sky.material.uniforms.fogColor.value.copy(scene.fog.color);
     water.position.set(bird.x, .04 + Math.sin(time * 1.2) * .035, bird.z);
     waveTexture.offset.set(time * .004, time * .002);
     sun.position.copy(v(bird.x, bird.y, bird.z)).addScaledVector(sunDirection, 210);
