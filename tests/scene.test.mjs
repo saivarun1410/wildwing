@@ -39,12 +39,13 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     assert.notDeepEqual([...fishMesh.instanceMatrix.array.slice(0, 16)], [...beforeFish], 'fish should move in water');
     world.update(bird, 180);
     assert.ok(stars.material.opacity > .5, 'stars should appear at night');
-    assert.equal(world.toggleNight(), true);
-    world.update(bird, 0);
-    assert.ok(stars.material.opacity > .5, 'night shortcut should show stars immediately');
+    assert.equal(world.isNight(), true);
     assert.equal(world.toggleNight(), false);
     world.update(bird, 0);
-    assert.ok(stars.material.opacity < .1, 'day shortcut should restore daylight');
+    assert.ok(stars.material.opacity < .1, 'time shortcut should return to day from a natural night');
+    assert.equal(world.toggleNight(), true);
+    world.update(bird, 0);
+    assert.ok(stars.material.opacity > .5, 'time shortcut should restore night');
     assert.ok(world.sites.trees.length > 20);
     assert.ok(world.sites.fish.length > 0);
     assert.equal(visual.position.x, bird.x);

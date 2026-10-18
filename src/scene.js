@@ -457,8 +457,9 @@ export function createEnvironment(seed, renderer) {
     }
   }
   refresh(home.branch.x, home.branch.z);
-  let lastNestProgress = -1, lastEcology = -1, skyMode = 'cycle';
-  function toggleNight() { skyMode = skyMode === 'night' ? 'day' : 'night'; return skyMode === 'night'; }
+  let lastNestProgress = -1, lastEcology = -1, skyMode = 'cycle', nightLevel = 0;
+  function toggleNight() { skyMode = nightLevel > .5 ? 'day' : 'night'; nightLevel = skyMode === 'night' ? 1 : 0; return skyMode === 'night'; }
+  function isNight() { return nightLevel > .5; }
   function update(bird, time) {
     refresh(bird.x, bird.z);
     sky.position.set(bird.x, bird.y, bird.z);
@@ -466,6 +467,7 @@ export function createEnvironment(seed, renderer) {
     const angle = skyMode === 'night' ? Math.PI * 1.5 : skyMode === 'day' ? .55 : .26 + time * .018;
     const elevation = Math.sin(angle);
     const night = Math.max(0, Math.min(1, (.1 - elevation) * 2.2));
+    nightLevel = night;
     const sunDirection = v(Math.cos(angle), elevation, -.22).normalize();
     celestial.sun.position.copy(sunDirection).multiplyScalar(430);
     celestial.moon.position.copy(sunDirection).multiplyScalar(-430);
@@ -493,7 +495,7 @@ export function createEnvironment(seed, renderer) {
       lastNestProgress = bird.nestProgress;
     }
   }
-  return { scene, camera, home, sites, update, refresh, consume, homeVisual, toggleNight };
+  return { scene, camera, home, sites, update, refresh, consume, homeVisual, toggleNight, isNight };
 }
 
 function feather(parent, x, y, z, sx, sy, sz, material, tilt = 0) {

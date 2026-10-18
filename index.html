@@ -19,7 +19,7 @@
 
     <header class="topbar">
       <div class="identity"><span class="identity-mark">✺</span><div><strong>WILDWING</strong><small>BIRD SIMULATOR</small></div></div>
-      <div class="top-right"><span class="world-id" id="worldId">WORLD 000000</span><button class="top-icon" id="soundButton" aria-label="Toggle sound" title="Toggle sound">♪</button><button class="top-icon" id="helpButton" aria-label="Show controls" title="Show controls">?</button></div>
+      <div class="top-right"><span class="world-id" id="worldId">WORLD 000000</span><button class="time-toggle" id="timeToggle" title="Press T to switch between day and night"><kbd>T</kbd><span id="timeToggleLabel">NIGHT</span></button><button class="top-icon" id="soundButton" aria-label="Toggle sound" title="Toggle sound">♪</button><button class="top-icon" id="helpButton" aria-label="Show controls" title="Show controls">?</button></div>
     </header>
 
     <section class="welcome" id="welcome" aria-labelledby="welcomeTitle">
@@ -28,7 +28,7 @@
         <h1 id="welcomeTitle">WILDWING</h1>
         <p class="welcome-copy">You're a bird in a wide, open world. Fly where you want. Land on branches, hunt for food, and build a nest.</p>
         <button id="enterButton" class="primary-button">Start playing <span>↗</span></button>
-        <p class="welcome-sub">YOU START ON A BRANCH. PRESS F TO FLY.</p>
+        <p class="welcome-sub">PRESS F TO FLY · T FOR DAY / NIGHT<br>NORTH TO SNOW · EAST TO THE OCEAN</p>
       </div>
     </section>
 
@@ -48,7 +48,7 @@
         <p class="field-event" id="fieldEvent">Perched at the home tree.</p>
       </aside>
 
-      <aside class="map-panel"><div class="map-head"><span>MAP</span><span id="compassLabel">N</span></div><canvas id="map" width="174" height="174" aria-label="Mini-map showing the bird, trees, and water"></canvas><div class="map-foot"><span>✺ HOME</span><span>≈ WATER</span></div></aside>
+      <aside class="map-panel"><div class="map-head"><span>MAP</span><span id="compassLabel">N</span></div><canvas id="map" width="174" height="174" aria-label="Mini-map showing the bird, trees, and water"></canvas><div class="map-foot"><span>✺ HOME</span><span>≈ WATER</span></div><div class="route-hints"><span>↑ NORTH · SNOW</span><span>→ EAST · OCEAN + FALLS</span></div></aside>
 
       <div class="crosshair" aria-hidden="true"><span></span><span></span></div>
       <div class="flight-tip" id="flightTip">DRAG TO STEER</div>

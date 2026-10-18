@@ -62,6 +62,12 @@ function notice(message) {
   clearTimeout(notice.timeout); notice.timeout = setTimeout(() => el.classList.remove('visible'), 3600);
 }
 
+function toggleDayNight() {
+  const night = world.toggleNight();
+  if (running) notice(night ? 'Night' : 'Morning');
+  updateHud();
+}
+
 function runCommand(command) {
   const result = issueCommand(bird, command, world.sites);
   notice(result.message);
@@ -86,11 +92,12 @@ $('#soundButton').addEventListener('click', () => {
   $('#soundButton').textContent = soundOn ? '♫' : '♪';
   notice(soundOn ? 'Sound on' : 'Sound off');
 });
+$('#timeToggle').addEventListener('click', toggleDayNight);
 
 addEventListener('keydown', event => {
   if (event.key === 'Escape') { $('#help').hidden = true; return; }
   if (event.target instanceof HTMLInputElement) return;
-  if (event.key.toLowerCase() === 't' && running && !event.repeat) { notice(world.toggleNight() ? 'Night' : 'Daylight'); return; }
+  if (event.key.toLowerCase() === 't' && running && !event.repeat) { event.preventDefault(); toggleDayNight(); return; }
   if (event.repeat && ['f', 'p', 'h', 'j', 'n'].includes(event.key.toLowerCase())) return;
   const shortcuts = { f: 'fly', p: 'perch', h: 'hunt fish', j: 'hunt land', n: 'build nest' };
   const command = shortcuts[event.key.toLowerCase()];
@@ -171,6 +178,10 @@ function updateCamera(dt) {
 }
 
 function updateHud() {
+  const nextTime = world.isNight() ? 'DAY' : 'NIGHT';
+  $('#dayLabel').textContent = world.isNight() ? 'NIGHT' : 'DAY';
+  $('#timeToggleLabel').textContent = nextTime;
+  $('#timeToggle').setAttribute('aria-label', `Press T for ${nextTime.toLowerCase()}`);
   const mode = bird.mode === 'perched' ? 'Perched' : bird.mode === 'approaching' ? 'On the way' : 'Flying';
   $('#modeTitle').textContent = mode;
   const target = bird.goal?.site && (bird.goal.site.branch || bird.goal.site);
