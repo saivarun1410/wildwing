@@ -46,3 +46,5 @@
 .help-grid span:nth-child(odd){font-size:15px}
 @media(max-width:1050px){.field-panel h2{font-size:30px}.action-buttons button{min-width:74px}}
 @media(max-width:720px){.identity strong{font-size:19px}.identity small{font-size:9px}.welcome h1{font-size:clamp(59px,14vw,96px)}.welcome-copy{font-size:15px}.welcome-sub{font-size:10px}.panel-label{font-size:10px}.field-panel h2{font-size:25px}.field-panel>p{font-size:11px}.stat,.nest-progress{font-size:10px}.field-panel .field-event{font-size:11px}.map-head{font-size:10px}.action-buttons button{min-width:0;min-height:50px}.action-buttons kbd{font-size:13px}.action-buttons span{font-size:10px}.command label{font-size:10px}.command-row input{font-size:12px}.notice{font-size:12px}.help-card h2{font-size:38px}.help-card p{font-size:13px}}
+.notice{bottom:114px}
+@media(max-width:720px){.notice{bottom:77px}}

@@ -41,6 +41,7 @@
         <div class="stat"><span>SPEED</span><strong id="speedValue">0 M/S</strong></div>
         <div class="stat"><span>HEIGHT</span><strong id="altitudeValue">—</strong></div>
         <div class="stat"><span>FROM HOME</span><strong id="distanceValue">0 M</strong></div>
+        <div class="stat"><span>FOOD CAUGHT</span><strong id="catchesValue">0</strong></div>
         <div class="field-divider"></div>
         <div class="nest-progress"><span>NEST</span><strong id="nestValue">0 / 5 TWIGS</strong></div>
         <div class="nest-track"><span id="nestTrack"></span></div>
@@ -63,14 +64,10 @@
         </div>
       </section>
 
-      <form class="command" id="commandForm" autocomplete="off">
-        <label for="commandInput">TYPE A COMMAND <span>PRESS /</span></label>
-        <div class="command-row"><span>›</span><input id="commandInput" placeholder="fly north, perch, hunt fish, build nest…" spellcheck="false" aria-label="Type a bird command"><button type="submit" aria-label="Run command">↵</button></div>
-      </form>
       <div class="notice" id="notice" role="status" aria-live="polite"></div>
     </main>
 
-    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">HOW TO PLAY</p><h2>Controls</h2><p>Press <kbd>F</kbd> or <kbd>W</kbd> to take off. You control where the bird goes and how it flies.</p><div class="help-grid"><span>W / S</span><span>Speed up / slow down</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Fly faster</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer</span><span>P</span><span>Land on a branch</span><span>H / J</span><span>Hunt in water / on land</span><span>N</span><span>Find twigs and build a nest</span><span>/</span><span>Type a command</span></div><p>You can also type <i>fly east</i>, <i>hunt fish</i>, <i>return home</i>, or <i>build nest</i>. New terrain loads as you travel.</p></div></div>
+    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">HOW TO PLAY</p><h2>Controls</h2><p>Press <kbd>F</kbd> or <kbd>W</kbd> to take off. You control where the bird goes and how it flies.</p><div class="help-grid"><span>W / S</span><span>Speed up / slow down</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Fly faster</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer</span><span>P</span><span>Land on a branch</span><span>H / J</span><span>Hunt in water / on land</span><span>N</span><span>Find twigs and build a nest</span></div><p>Normal flight clears the trees. Hold ↓ to dive, or ↑ to climb above the clouds. Use the buttons or keyboard shortcuts for actions.</p></div></div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

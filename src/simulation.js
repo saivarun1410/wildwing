@@ -10,7 +10,7 @@ export function createBird(home, seed) {
     heading: -.4, pitch: 0, bank: 0, speed: 0,
     mode: 'perched', action: 'At the home tree', goal: null,
     catches: 0, nestProgress: 0, twigs: 0, wingPhase: 0,
-    home, seed, lastEvent: 'Perched at the home tree.'
+    home, perchSite: home, seed, lastEvent: 'Perched at the home tree.'
   };
 }
 
@@ -29,7 +29,7 @@ export function parseCommand(raw) {
 
 function takeoff(bird) {
   if (bird.mode === 'perched') { bird.y += 1.4; bird.speed = 10; }
-  bird.mode = 'flying'; bird.goal = null; bird.action = 'Free flight';
+  bird.mode = 'flying'; bird.goal = null; bird.perchSite = null; bird.action = 'Free flight';
   bird.lastEvent = 'Flying.';
 }
 
@@ -55,7 +55,7 @@ export function issueCommand(bird, raw, world) {
     return { ok: true, message: 'Heading for a branch.' };
   }
   if (command.type === 'hunt-water') {
-    const site = nearestSite(bird, world.fish, 220);
+    const site = nearestSite(bird, world.fish, 600);
     if (!site) return { ok: false, message: 'No fish nearby. Look for a lake or follow the water.' };
     if (bird.mode === 'perched') takeoff(bird);
     bird.mode = 'approaching'; bird.goal = { kind: 'fish', site }; bird.action = 'Hunting fish';
@@ -89,11 +89,12 @@ export function updateBird(bird, controls, dt) {
     else return null;
   }
 
-  const manual = Math.abs(controls.turn) > .04 || Math.abs(controls.climb) > .04 || controls.forward !== 0 || controls.flap;
+  const manual = controls.overrideTask ?? (Math.abs(controls.turn) > .04 || Math.abs(controls.climb) > .04 || controls.forward !== 0 || controls.flap);
   if (manual && bird.mode === 'approaching') { bird.mode = 'flying'; bird.goal = null; bird.action = 'Free flight'; }
 
-  let desiredSpeed = controls.fast ? 27 : controls.forward < 0 ? 8 : controls.forward > 0 ? 20 : 14;
-  let turn = controls.turn, climb = controls.climb;
+  const flightControls = bird.mode === 'approaching' ? { turn: 0, climb: 0, forward: 0, fast: false, flap: false } : controls;
+  let desiredSpeed = flightControls.fast ? 27 : flightControls.forward < 0 ? 8 : flightControls.forward > 0 ? 20 : 14;
+  let turn = flightControls.turn, climb = flightControls.climb;
   let autopilotPoint = null;
   if (bird.mode === 'approaching' && bird.goal) {
     const { kind, site } = bird.goal;
@@ -106,11 +107,11 @@ export function updateBird(bird, controls, dt) {
     const targetHeight = kind === 'fish' ? Math.max(point.y + 2, WATER_LEVEL + 1.1) : point.y + (kind === 'perch' || kind === 'nest' ? .4 : 1);
     climb = clamp((targetHeight - bird.y) / Math.max(6, horizontal * .45), -.85, .75);
     desiredSpeed = horizontal < 12 ? 5 + horizontal * .3 : kind === 'fish' ? 23 : 16;
-    bird.action = kind === 'fish' ? 'Diving for fish' : kind === 'prey' ? 'Hunting on land' : kind === 'twig' ? 'Picking up a twig' : kind === 'nest' ? 'Bringing a twig home' : 'Landing on a branch';
+    bird.action = kind === 'fish' ? horizontal < 25 ? 'Diving for fish' : 'Flying to water' : kind === 'prey' ? horizontal < 25 ? 'Closing on prey' : 'Flying to prey' : kind === 'twig' ? 'Picking up a twig' : kind === 'nest' ? 'Bringing a twig home' : 'Landing on a branch';
     if (horizontal < (kind === 'fish' ? 3.5 : 2.3) && Math.abs(bird.y - targetHeight) < (kind === 'fish' ? 2.4 : 1.5)) {
       bird.x = point.x; bird.z = point.z;
       if (kind === 'perch' || kind === 'nest') {
-        bird.y = point.y; bird.speed = 0; bird.mode = 'perched'; bird.goal = null;
+        bird.y = point.y; bird.speed = 0; bird.mode = 'perched'; bird.goal = null; bird.perchSite = site;
         if (kind === 'nest') {
           bird.twigs = 0; bird.nestProgress = Math.min(5, bird.nestProgress + 1);
           bird.lastEvent = bird.nestProgress === 5 ? 'Nest complete.' : `Nest: ${bird.nestProgress} of 5 twigs.`;
@@ -131,7 +132,7 @@ export function updateBird(bird, controls, dt) {
   bird.heading += turn * dt * (bird.speed < 7 ? 1.25 : .95);
   bird.bank = approach(bird.bank, -turn * .45, dt * 1.8);
   bird.pitch = approach(bird.pitch, clamp(climb, -.9, .9) * .43, dt * 1.2);
-  bird.speed = approach(bird.speed, desiredSpeed + (controls.flap ? 4 : 0), dt * 12);
+  bird.speed = approach(bird.speed, desiredSpeed + (flightControls.flap ? 4 : 0), dt * 12);
   if (autopilotPoint) {
     const dx = autopilotPoint.x - bird.x, dz = autopilotPoint.z - bird.z;
     const distance = Math.hypot(dx, dz);
@@ -141,8 +142,12 @@ export function updateBird(bird, controls, dt) {
     bird.x += Math.sin(bird.heading) * bird.speed * dt;
     bird.z -= Math.cos(bird.heading) * bird.speed * dt;
   }
-  bird.y += (Math.sin(bird.pitch) * bird.speed + (controls.flap ? 2.5 : 0)) * dt;
-  const floor = terrainHeight(bird.x, bird.z, bird.seed) + 1.4;
+  bird.y += (Math.sin(bird.pitch) * bird.speed + (flightControls.flap ? 2.5 : 0)) * dt;
+  const terrain = terrainHeight(bird.x, bird.z, bird.seed);
+  if (bird.mode === 'flying' && flightControls.climb >= 0 && bird.y < terrain + 20) {
+    bird.y += Math.min(terrain + 20 - bird.y, dt * 5.5);
+  }
+  const floor = terrain + 1.4;
   bird.y = Math.max(bird.y, Math.max(WATER_LEVEL + .8, floor));
   return null;
 }

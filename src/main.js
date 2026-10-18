@@ -50,6 +50,7 @@ const ambient = Array.from({ length: 7 }, (_, i) => {
 });
 
 const key = new Set();
+let inputRevision = 0, taskStartRevision = 0;
 let pointerTurn = 0, pointerClimb = 0, dragging = false, lastPointer = null;
 let running = false, time = 0, lastFrame = 0, lastHud = 0, lastMap = 0, lastSave = 0, lastChirp = 0;
 let audio = null, soundOn = false;
@@ -64,15 +65,14 @@ function notice(message) {
 function runCommand(command) {
   const result = issueCommand(bird, command, world.sites);
   notice(result.message);
-  if (result.ok) updateHud();
+  if (result.ok) {
+    if (bird.mode === 'approaching') taskStartRevision = inputRevision;
+    updateHud();
+  }
   return result;
 }
 
 document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => runCommand(button.dataset.command)));
-$('#commandForm').addEventListener('submit', event => {
-  event.preventDefault(); const input = $('#commandInput'); if (input.value.trim()) runCommand(input.value);
-  input.value = ''; input.blur();
-});
 $('#enterButton').addEventListener('click', () => {
   $('#welcome').classList.add('hidden'); $('#hud').classList.add('visible'); $('#hud').setAttribute('aria-hidden', 'false');
   running = true; $('#loading').classList.add('hidden'); startAudio();
@@ -88,13 +88,13 @@ $('#soundButton').addEventListener('click', () => {
 });
 
 addEventListener('keydown', event => {
-  if (event.key === 'Escape') { $('#help').hidden = true; $('#commandInput').blur(); return; }
+  if (event.key === 'Escape') { $('#help').hidden = true; return; }
   if (event.target instanceof HTMLInputElement) return;
-  if (event.key === '/' || event.key === 'Enter') { event.preventDefault(); $('#commandInput').focus(); return; }
   if (event.repeat && ['f', 'p', 'h', 'j', 'n'].includes(event.key.toLowerCase())) return;
   const shortcuts = { f: 'fly', p: 'perch', h: 'hunt fish', j: 'hunt land', n: 'build nest' };
   const command = shortcuts[event.key.toLowerCase()];
   if (command && running) { event.preventDefault(); runCommand(command); return; }
+  if (!event.repeat && ['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' '].includes(event.key.toLowerCase())) inputRevision++;
   if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) event.preventDefault();
   key.add(event.key.toLowerCase());
 });
@@ -104,12 +104,14 @@ addEventListener('blur', () => key.clear());
 const sceneCanvas = renderer.domElement;
 sceneCanvas.addEventListener('pointerdown', event => {
   if (!running) return;
+  inputRevision++;
   dragging = true; lastPointer = { x: event.clientX, y: event.clientY };
   sceneCanvas.setPointerCapture(event.pointerId);
   if (bird.mode === 'perched') runCommand('fly');
 });
 sceneCanvas.addEventListener('pointermove', event => {
   if (!dragging || !lastPointer) return;
+  inputRevision++;
   pointerTurn = Math.max(-1, Math.min(1, pointerTurn + (event.clientX - lastPointer.x) * .018));
   pointerClimb = Math.max(-1, Math.min(1, pointerClimb - (event.clientY - lastPointer.y) * .018));
   lastPointer = { x: event.clientX, y: event.clientY };
@@ -121,7 +123,7 @@ sceneCanvas.addEventListener('contextmenu', event => event.preventDefault());
 function controls() {
   const turn = (key.has('d') || key.has('arrowright') ? 1 : 0) - (key.has('a') || key.has('arrowleft') ? 1 : 0) + pointerTurn;
   const climb = (key.has('arrowup') ? 1 : 0) - (key.has('arrowdown') ? 1 : 0) + pointerClimb;
-  return { turn: Math.max(-1, Math.min(1, turn)), climb: Math.max(-1, Math.min(1, climb)), forward: (key.has('w') ? 1 : 0) - (key.has('s') ? 1 : 0), fast: key.has('shift'), flap: key.has(' ') };
+  return { turn: Math.max(-1, Math.min(1, turn)), climb: Math.max(-1, Math.min(1, climb)), forward: (key.has('w') ? 1 : 0) - (key.has('s') ? 1 : 0), fast: key.has('shift'), flap: key.has(' '), overrideTask: inputRevision > taskStartRevision };
 }
 
 function updateAmbient(dt) {
@@ -155,9 +157,14 @@ function updateAmbient(dt) {
 
 function updateCamera(dt) {
   const forward = new THREE.Vector3(Math.sin(bird.heading), 0, -Math.cos(bird.heading));
-  const distance = bird.mode === 'perched' ? 16 : 20 + bird.speed * .18;
-  const targetPosition = new THREE.Vector3(bird.x, bird.y, bird.z).addScaledVector(forward, -distance).add(new THREE.Vector3(0, bird.mode === 'perched' ? 6.5 : 6, 0));
+  const distance = 20 + bird.speed * .18;
+  const targetPosition = new THREE.Vector3(bird.x, bird.y, bird.z).addScaledVector(forward, -distance).add(new THREE.Vector3(0, 6, 0));
   const lookAt = new THREE.Vector3(bird.x, bird.y + 1.5, bird.z).addScaledVector(forward, 10);
+  if (bird.mode === 'perched' && bird.perchSite) {
+    const outward = new THREE.Vector3(bird.x - bird.perchSite.x, 0, bird.z - bird.perchSite.z).normalize();
+    targetPosition.set(bird.x + outward.x * 11, bird.y + 5, bird.z + outward.z * 11);
+    lookAt.set(bird.x, bird.y + 1, bird.z);
+  }
   world.camera.position.lerp(targetPosition, Math.min(1, dt * 2.1));
   world.camera.lookAt(lookAt);
 }
@@ -165,10 +172,13 @@ function updateCamera(dt) {
 function updateHud() {
   const mode = bird.mode === 'perched' ? 'Perched' : bird.mode === 'approaching' ? 'On the way' : 'Flying';
   $('#modeTitle').textContent = mode;
-  $('#modeDescription').textContent = bird.action + (bird.mode === 'perched' ? '. Press F to fly.' : '.');
+  const target = bird.goal?.site && (bird.goal.site.branch || bird.goal.site);
+  const remaining = target ? Math.round(Math.hypot(target.x - bird.x, target.z - bird.z)) : 0;
+  $('#modeDescription').textContent = bird.action + (target ? ` · ${remaining} m away` : bird.mode === 'perched' ? '. Press F to fly.' : '.');
   $('#speedValue').textContent = bird.mode === 'perched' ? '0 M/S' : `${Math.round(bird.speed)} M/S`;
   $('#altitudeValue').textContent = `${Math.round(Math.max(0, bird.y - terrainHeight(bird.x, bird.z, seed)))} M`;
   $('#distanceValue').textContent = `${Math.round(Math.hypot(bird.x, bird.z))} M`;
+  $('#catchesValue').textContent = String(bird.catches);
   $('#nestValue').textContent = `${bird.nestProgress} / 5 TWIGS`;
   $('#nestTrack').style.width = `${bird.nestProgress * 20}%`;
   $('#fieldEvent').textContent = bird.lastEvent;
@@ -225,18 +235,37 @@ function saveProgress() {
 }
 function spawnEffect(event) {
   if (event.type !== 'fish' && event.type !== 'prey') return;
-  const material = new THREE.MeshBasicMaterial({ color: event.type === 'fish' ? 0xe2f4ec : 0xe5d5b1, transparent: true, opacity: .75, side: THREE.DoubleSide, depthWrite: false });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 32), material);
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(event.x, event.type === 'fish' ? .16 : terrainHeight(event.x, event.z, seed) + .1, event.z);
-  world.scene.add(ring); effects.push({ ring, born: time });
+  const watery = event.type === 'fish';
+  const group = new THREE.Group();
+  group.position.set(event.x, watery ? .16 : terrainHeight(event.x, event.z, seed) + .12, event.z);
+  const rings = [];
+  for (let i = 0; i < 2; i++) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.78, .94, 40), new THREE.MeshBasicMaterial({ color: watery ? 0xe4f8f2 : 0xcdbb93, transparent: true, opacity: .78, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = .02 + i * .02; group.add(ring); rings.push(ring);
+  }
+  const particles = [];
+  for (let i = 0; i < 12; i++) {
+    const angle = i / 12 * Math.PI * 2, speed = 2.3 + (i % 4) * .6;
+    const particle = new THREE.Mesh(new THREE.SphereGeometry(watery ? .11 : .085, 5, 4), new THREE.MeshBasicMaterial({ color: watery ? 0xe6f9f5 : 0xd7bc88, transparent: true, opacity: .85, depthWrite: false }));
+    particle.position.y = .15; group.add(particle);
+    particles.push({ mesh: particle, vx: Math.cos(angle) * speed, vz: Math.sin(angle) * speed, vy: 2.7 + (i % 3) * .75 });
+  }
+  world.scene.add(group); effects.push({ group, rings, particles, born: time });
 }
 function updateEffects() {
   for (let i = effects.length - 1; i >= 0; i--) {
     const effect = effects[i], age = time - effect.born;
-    if (age > 1.2) {
-      world.scene.remove(effect.ring); effect.ring.geometry.dispose(); effect.ring.material.dispose(); effects.splice(i, 1);
-    } else { effect.ring.scale.setScalar(.5 + age * 3); effect.ring.material.opacity = .75 * (1 - age / 1.2); }
+    if (age > 1.5) {
+      world.scene.remove(effect.group);
+      effect.group.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) obj.material.dispose(); });
+      effects.splice(i, 1);
+    } else {
+      effect.rings.forEach((ring, j) => { ring.scale.setScalar(.45 + Math.max(0, age - j * .18) * 2.8); ring.material.opacity = Math.max(0, .75 * (1 - age / 1.5)); });
+      effect.particles.forEach(({ mesh, vx, vy, vz }) => {
+        mesh.position.set(vx * age, .15 + vy * age - 5 * age * age, vz * age);
+        mesh.material.opacity = Math.max(0, .85 * (1 - age / 1.5));
+      });
+    }
   }
 }
 addEventListener('beforeunload', saveProgress);

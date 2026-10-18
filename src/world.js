@@ -31,6 +31,16 @@ export function terrainHeight(x, z, seed = 1) {
       height -= basin * basin * 31;
     }
   }
+  // Smaller scattered basins create ponds between the larger lakes.
+  const px = Math.round((x - 64) / 240), pz = Math.round((z - 75) / 240);
+  for (let ix = px - 1; ix <= px + 1; ix++) for (let iz = pz - 1; iz <= pz + 1; iz++) {
+    if (hash2(ix, iz, seed + 180) < .22) continue;
+    const cx = ix * 240 + 64 + (hash2(ix, iz, seed + 181) - .5) * 80;
+    const cz = iz * 240 + 75 + (hash2(ix, iz, seed + 182) - .5) * 80;
+    const radius = 27 + hash2(ix, iz, seed + 183) * 19;
+    const basin = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / radius);
+    height -= basin * basin * 21;
+  }
   const mountain = Math.max(0, noise(x / 370 + 8, z / 370 - 5, seed + 55) - .2);
   height += mountain * mountain * 68 * Math.min(1, Math.hypot(x, z) / 350);
   const sanctuary = Math.exp(-(x * x + z * z) / (2 * 32 * 32));
@@ -40,7 +50,7 @@ export function terrainHeight(x, z, seed = 1) {
 
 export function treeSites(tx, tz, seed = 1) {
   const sites = [];
-  for (let i = 0; i < 43; i++) {
+  for (let i = 0; i < 19; i++) {
     const x = (tx + .04 + hash2(tx * 43 + i, tz * 41, seed + 101) * .92) * TILE_SIZE;
     const z = (tz + .04 + hash2(tx * 37, tz * 47 + i, seed + 102) * .92) * TILE_SIZE;
     const y = terrainHeight(x, z, seed);
@@ -53,7 +63,8 @@ export function treeSites(tx, tz, seed = 1) {
 
 export function fishSites(tx, tz, seed = 1) {
   const sites = [];
-  for (let i = 0; i < 11; i++) {
+  if (tx === 0 && tz === 0) sites.push({ id: 'fish:home-lake', x: 88, y: .18, z: 0 });
+  for (let i = 0; i < 22; i++) {
     const x = (tx + hash2(tx * 53 + i, tz * 59, seed + 211)) * TILE_SIZE;
     const z = (tz + hash2(tx * 61, tz * 67 + i, seed + 212)) * TILE_SIZE;
     if (terrainHeight(x, z, seed) < -1.8) sites.push({ id: `fish:${tx}:${tz}:${i}`, x, y: .18, z });

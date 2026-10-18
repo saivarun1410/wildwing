@@ -65,3 +65,29 @@ test('nest building gathers and places five separate twigs', () => {
   }
   assert.match(bird.lastEvent, /complete/);
 });
+
+test('held steering does not cancel a hunt or nest task until new input arrives', () => {
+  const held = { ...idle, forward: 1, flap: true, overrideTask: false };
+  const bird = createBird(home, seed);
+  assert.ok(issueCommand(bird, 'hunt land', world).ok);
+  for (let i = 0; i < 4000 && bird.catches === 0; i++) updateBird(bird, held, 1 / 60);
+  assert.equal(bird.catches, 1);
+  assert.ok(issueCommand(bird, 'build nest', world).ok);
+  for (let i = 0; i < 4000 && bird.nestProgress === 0; i++) updateBird(bird, held, 1 / 60);
+  assert.equal(bird.nestProgress, 1);
+  assert.ok(issueCommand(bird, 'hunt fish', world).ok);
+  updateBird(bird, { ...held, overrideTask: true }, 1 / 60);
+  assert.equal(bird.mode, 'flying');
+  assert.equal(bird.goal, null);
+});
+
+test('free flight clears the trees and can climb above clouds or dive deliberately', () => {
+  const bird = createBird(home, seed);
+  issueCommand(bird, 'fly', world);
+  for (let i = 0; i < 300; i++) updateBird(bird, idle, 1 / 60);
+  assert.ok(bird.y >= terrainHeight(bird.x, bird.z, seed) + 19);
+  for (let i = 0; i < 2400; i++) updateBird(bird, { ...idle, climb: 1, fast: true }, 1 / 60);
+  assert.ok(bird.y > 200, 'bird can fly higher than the cloud layer');
+  for (let i = 0; i < 2400; i++) updateBird(bird, { ...idle, climb: -1, fast: true }, 1 / 60);
+  assert.ok(bird.y < 80, 'deliberate dive is not blocked by the canopy cruise height');
+});
