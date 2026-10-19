@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TILE_SIZE, terrainHeight, hash2 } from './world.js';
+import { TILE_SIZE, terrainHeight, landscapeAt, mountainFallsSites, hash2 } from './world.js';
 
 const bodyShape = new THREE.SphereGeometry(1, 9, 7);
 const legShape = new THREE.CylinderGeometry(.12, .16, 1, 6);
@@ -62,7 +62,7 @@ export function addLandAnimals(group, tx, tz, seed) {
     const x = (tx + .18 + hash2(tx * 17 + i, tz, seed + 721) * .64) * TILE_SIZE;
     const z = (tz + .18 + hash2(tx, tz * 19 + i, seed + 722) * .64) * TILE_SIZE;
     const y = terrainHeight(x, z, seed);
-    if (y < 2 || y > 26) continue;
+    if (y < 2 || y > 26 || landscapeAt(x, z, seed, y) === 'city') continue;
     const kind = species[Math.floor(hash2(tx * 3 + i, tz * 5, seed + 723) * species.length)];
     const animal = makeAnimal(kind);
     animal.root.position.set(x, y, z); group.add(animal.root);
@@ -86,43 +86,89 @@ export function updateLandAnimals(animals, time) {
 }
 
 export function addWaterfalls(group, tx, tz, seed) {
-  if (hash2(tx, tz, seed + 750) < .3) return [];
   let best = null;
-  for (let i = 0; i < 25; i++) {
-    const x = (tx + .1 + (i % 5) * .2) * TILE_SIZE;
-    const z = (tz + .1 + Math.floor(i / 5) * .2) * TILE_SIZE;
-    const top = terrainHeight(x, z, seed);
-    if (top < 2.5 || top > 18) continue;
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const bx = x + dx * 15, bz = z + dz * 15;
-      const bottom = terrainHeight(bx, bz, seed);
-      const drop = top - bottom;
-      if (bottom < .5 && drop > 2.5 && (!best || drop > best.drop)) best = { x, z, bx, bz, top, drop };
+  for (const site of mountainFallsSites(seed)) {
+    const x = site.x, z = site.z - 17;
+    if (Math.floor(x / TILE_SIZE) !== tx || Math.floor(z / TILE_SIZE) !== tz) continue;
+    const bx = x, bz = site.z + 24;
+    const top = terrainHeight(x, z, seed), bottom = terrainHeight(bx, bz, seed);
+    if (top - bottom > 12) best = { x, z, bx, bz, top, bottom, drop: top - bottom, width: 6.4, mountain: true };
+  }
+  if (!best && hash2(tx, tz, seed + 750) >= .45) {
+    for (let i = 0; i < 25; i++) {
+      const x = (tx + .1 + (i % 5) * .2) * TILE_SIZE;
+      const z = (tz + .1 + Math.floor(i / 5) * .2) * TILE_SIZE;
+      const top = terrainHeight(x, z, seed);
+      if (top < 4 || top > 25) continue;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const bx = x + dx * 18, bz = z + dz * 18;
+        const bottom = terrainHeight(bx, bz, seed);
+        const drop = top - bottom;
+        if (bottom < 1 && drop > 3.5 && (!best || drop > best.drop)) best = { x, z, bx, bz, top, bottom, drop, width: 2.4, mountain: false };
+      }
     }
   }
   if (!best) return [];
-  const { x, z, bx, bz, top } = best;
-  const sideX = (bz - z) / 15, sideZ = -(bx - x) / 15;
-  const vertices = [];
-  for (let i = 0; i <= 12; i++) {
-    const t = i / 12, cx = x + (bx - x) * t, cz = z + (bz - z) * t;
-    const y = Math.max(.28, terrainHeight(cx, cz, seed) + .35 + Math.sin(t * Math.PI) * .9);
-    const width = 1.3 + t * 1.8;
-    vertices.push(cx - sideX * width, y, cz - sideZ * width, cx + sideX * width, y, cz + sideZ * width);
+  const { x, z, bx, bz, top, bottom, mountain } = best;
+  const length = Math.hypot(bx - x, bz - z);
+  const forwardX = (bx - x) / length, forwardZ = (bz - z) / length;
+  const sideX = forwardZ, sideZ = -forwardX;
+  const ribbons = [];
+  function waterRibbon(from, to, width, offset, pale, number) {
+    const rows = 26, vertices = [], shades = [], indices = [];
+    const base = new THREE.Color(pale ? 0xb6d1d0 : 0x6e9fa8);
+    const foam = new THREE.Color(0xe5eee9);
+    for (let row = 0; row <= rows; row++) {
+      const t = row / rows, distance = from + (to - from) * t;
+      const cx = x + forwardX * distance + sideX * offset;
+      const cz = z + forwardZ * distance + sideZ * offset;
+      const ground = terrainHeight(cx, cz, seed);
+      const surface = ground + .25 + (pale ? .36 : .16) + Math.sin(t * Math.PI) * (mountain ? .48 : .18);
+      for (let side = 0; side <= 4; side++) {
+        const across = (side / 4 - .5) * width * (1 + t * .18);
+        const waviness = Math.sin(t * 31 + side * 1.7 + number) * .11;
+        vertices.push(cx + sideX * (across + waviness), surface + Math.sin(t * 24 + side) * .08, cz + sideZ * (across + waviness));
+        const streak = Math.pow(Math.abs(Math.sin(t * 23 + side * 2.5 + number)), 8) * .38 + (side === 0 || side === 4 ? .15 : 0);
+        const shade = base.clone().lerp(foam, streak);
+        shades.push(shade.r, shade.g, shade.b);
+        if (row < rows && side < 4) {
+          const a = row * 5 + side;
+          indices.push(a, a + 5, a + 1, a + 1, a + 5, a + 6);
+        }
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(shades, 3));
+    geometry.setIndex(indices); geometry.computeVertexNormals();
+    const material = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: .05, roughness: pale ? .35 : .24, transparent: true, opacity: pale ? .65 : .8, side: THREE.DoubleSide, depthWrite: false });
+    const ribbon = new THREE.Mesh(geometry, material); ribbon.castShadow = false; group.add(ribbon); ribbons.push(ribbon);
+    return ribbon;
   }
-  const indices = [];
-  for (let i = 0; i < 12; i++) { const a = i * 2; indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-  const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); geometry.setIndex(indices); geometry.computeVertexNormals();
-  const water = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xbde8ed, emissive: 0x244e58, emissiveIntensity: .25, transparent: true, opacity: .82, roughness: .24, side: THREE.DoubleSide, depthWrite: false }));
-  water.position.y = .1; group.add(water);
-  const foam = part(group, bodyShape, new THREE.MeshBasicMaterial({ color: 0xe7f7f2, transparent: true, opacity: .72, depthWrite: false }), [bx, .38, bz], [3.1, .12, 3.1]);
-  foam.castShadow = false;
-  return [{ water, foam, x, z, bx, bz, top }];
+  const upstream = waterRibbon(mountain ? -37 : -13, 0, best.width * .88, 0, false, 0);
+  const water = waterRibbon(0, length, best.width, 0, false, 1);
+  for (let i = -1; i <= 1; i++) waterRibbon(1, length - 1, best.width * .18, i * best.width * .25, true, i + 3);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(mountain ? 8.5 : 4.8, 32), new THREE.MeshPhysicalMaterial({ color: 0x5f9297, transparent: true, opacity: .72, roughness: .28, depthWrite: false, side: THREE.DoubleSide }));
+  pool.rotation.x = -Math.PI / 2; pool.position.set(bx, bottom + .24, bz + (mountain ? 2 : 0)); pool.castShadow = false; group.add(pool);
+  const foam = new THREE.Mesh(new THREE.RingGeometry(mountain ? 2.3 : 1.4, mountain ? 4.2 : 2.8, 36), new THREE.MeshBasicMaterial({ color: 0xe1ece8, transparent: true, opacity: .52, depthWrite: false, side: THREE.DoubleSide }));
+  foam.rotation.x = -Math.PI / 2; foam.position.set(bx, bottom + .28, bz); foam.castShadow = false; group.add(foam);
+  const sprayPositions = [];
+  for (let i = 0; i < (mountain ? 78 : 32); i++) {
+    const spread = (hash2(i, 2, seed + 760) - .5) * best.width * 1.6;
+    sprayPositions.push(bx + sideX * spread + (hash2(i, 3, seed + 761) - .5) * 2,
+      bottom + .6 + hash2(i, 4, seed + 762) * Math.min(10, best.drop * .35),
+      bz + sideZ * spread + (hash2(i, 5, seed + 763) - .5) * 2);
+  }
+  const sprayGeometry = new THREE.BufferGeometry(); sprayGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sprayPositions, 3));
+  const spray = new THREE.Points(sprayGeometry, new THREE.PointsMaterial({ color: 0xe3ede8, size: mountain ? .8 : .45, transparent: true, opacity: .46, depthWrite: false }));
+  group.add(spray);
+  return [{ water, upstream, ribbons, pool, foam, spray, x, z, bx, bz, top, bottom, drop: best.drop, mountain }];
 }
 
 export function updateWaterfalls(waterfalls, time) {
   for (const fall of waterfalls) {
-    fall.water.material.opacity = .72 + Math.sin(time * 3 + fall.x) * .09;
-    fall.foam.scale.x = 3.1 + Math.sin(time * 4 + fall.z) * .35;
+    fall.ribbons.forEach((ribbon, i) => { ribbon.material.opacity = (i < 2 ? .76 : .61) + Math.sin(time * 2.5 + i + fall.x) * .035; });
+    fall.foam.scale.setScalar(1 + Math.sin(time * 2.4 + fall.z) * .055);
+    fall.spray.material.opacity = .41 + Math.sin(time * 2.1 + fall.x) * .045;
   }
 }

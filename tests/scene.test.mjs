@@ -4,7 +4,8 @@ import { createEnvironment, createBirdVisual, animateBirdVisual } from '../src/s
 import { createBird } from '../src/simulation.js';
 import * as THREE from 'three';
 import { addLandAnimals, updateLandAnimals, addWaterfalls } from '../src/ecosystem.js';
-import { treeSites } from '../src/world.js';
+import { addCity, updateCity } from '../src/city.js';
+import { treeSites, terrainHeight, landscapeAt, mountainFallsSites } from '../src/world.js';
 
 test('3D world constructs, streams terrain, and animates bird models', () => {
   const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;
@@ -52,6 +53,14 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
     const firstFish = world.sites.fish[0];
     world.consume('fish', firstFish.id);
     assert.ok(!world.sites.fish.some(site => site.id === firstFish.id));
+    bird.x = -750; bird.z = 320; bird.y = 125;
+    world.update(bird, 6);
+    let cityBuildings = 0, roadVehicles = 0;
+    world.scene.traverse(object => {
+      if (object.userData.kind === 'city-building') cityBuildings++;
+      if (object.userData.kind === 'car' || object.userData.kind === 'truck') roadVehicles++;
+    });
+    assert.ok(cityBuildings > 20 && roadVehicles > 0, 'the streamed city should be visible and active');
     bird.x = 2000; bird.z = 2000;
     world.update(bird, 10);
     assert.equal(world.sites.trees.length, 0, 'the ocean should not contain trees');
@@ -85,4 +94,41 @@ test('land animals and waterfalls populate streamed terrain', () => {
   assert.deepEqual([...kinds].sort(), ['bear', 'deer', 'fox', 'monkey']);
   assert.ok(moving, 'animals should move across terrain');
   assert.ok(falls > 0, 'nearby terrain should include waterfalls');
+});
+
+test('mountain slopes, woodland, and coast form distinct explorable landscapes', () => {
+  const regions = new Set();
+  for (let x = -5; x <= 5; x++) for (let z = -9; z <= 5; z++) {
+    const px = x * 96 + 20, pz = z * 96 + 20;
+    regions.add(landscapeAt(px, pz, 123456));
+  }
+  for (const region of ['mountain', 'alpine', 'woodland', 'meadow', 'coast', 'water']) assert.ok(regions.has(region), `missing ${region}`);
+  for (const site of mountainFallsSites(123456)) {
+    const upper = terrainHeight(site.x, site.z - 17, 123456);
+    const lower = terrainHeight(site.x, site.z + 24, 123456);
+    assert.ok(upper - lower > 12, 'mountain waterfall needs a real terrain drop');
+    const group = new THREE.Group();
+    const falls = addWaterfalls(group, Math.floor(site.x / 96), Math.floor((site.z - 17) / 96), 123456);
+    assert.ok(falls.some(fall => fall.mountain && fall.upstream && fall.pool && fall.spray));
+  }
+});
+
+test('southwestern city has buildings and moving cars and trucks, without forest trees', () => {
+  const kinds = new Set(); let traffic = 0, buildings = 0;
+  assert.equal(landscapeAt(-750, 320, 123456), 'city');
+  for (let x = -11; x <= -5; x++) for (let z = 0; z <= 6; z++) {
+    const group = new THREE.Group();
+    const city = addCity(group, x, z, 123456, true);
+    if (!city) continue;
+    group.traverse(object => { if (object.userData.kind) kinds.add(object.userData.kind); if (object.userData.kind === 'city-building') buildings++; });
+    if (city.vehicles.length) {
+      const before = city.vehicles[0].root.position.clone();
+      updateCity(city, 2);
+      if (city.vehicles[0].root.position.distanceTo(before) > .1) traffic++;
+    }
+  }
+  assert.ok(buildings > 30);
+  assert.ok(kinds.has('car') && kinds.has('truck') && kinds.has('city-road'));
+  assert.ok(traffic > 0);
+  assert.equal(treeSites(-8, 3, 123456).length, 0);
 });

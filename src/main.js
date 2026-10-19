@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createEnvironment, createBirdVisual, animateBirdVisual } from './scene.js';
 import { createBird, issueCommand, updateBird } from './simulation.js';
-import { terrainHeight, hash2, nearestSite } from './world.js';
+import { terrainHeight, landscapeAt, hash2, nearestSite } from './world.js';
 import './style.css';
 
 const $ = selector => document.querySelector(selector);
@@ -205,7 +205,7 @@ function drawMap() {
   for (let iz = 0; iz < cells; iz++) for (let ix = 0; ix < cells; ix++) {
     const x = bird.x + (ix / cells - .5) * span, z = bird.z + (iz / cells - .5) * span;
     const h = terrainHeight(x, z, seed);
-    mapCtx.fillStyle = h < 0 ? '#517e8a' : h < 2 ? '#c7b68c' : h > 28 ? '#a6a9a2' : h > 15 ? '#8e9c77' : '#6f8b62';
+    mapCtx.fillStyle = landscapeAt(x, z, seed, h) === 'city' ? '#777b76' : h < 0 ? '#517e8a' : h < 2 ? '#c7b68c' : h > 28 ? '#a6a9a2' : h > 15 ? '#8e9c77' : '#6f8b62';
     mapCtx.fillRect(ix * cell, iz * cell, cell + .4, cell + .4);
   }
   for (const tree of world.sites.trees) {
