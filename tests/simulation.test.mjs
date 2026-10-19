@@ -117,6 +117,22 @@ test('free flight cruises at cloud height and can climb higher or dive deliberat
   assert.ok(bird.y < highPoint - 300, 'deliberate dive is not blocked by the canopy cruise height');
 });
 
+test('a manual descent becomes a fast forward glide and eases out near the ground', () => {
+  const bird = createBird(home, seed);
+  issueCommand(bird, 'fly', world);
+  for (let i = 0; i < 900; i++) updateBird(bird, idle, 1 / 60);
+  const start = { x: bird.x, y: bird.y, z: bird.z, speed: bird.speed };
+  for (let i = 0; i < 120; i++) updateBird(bird, { ...idle, climb: -1 }, 1 / 60);
+  assert.ok(bird.speed > start.speed + 25, 'descending should build airspeed');
+  assert.ok(bird.y < start.y - 30, 'the bird should lose altitude');
+  assert.ok(Math.hypot(bird.x - start.x, bird.z - start.z) > 45, 'the dive should carry the bird forward');
+  for (let i = 0; i < 180; i++) updateBird(bird, { ...idle, climb: -1 }, 1 / 60);
+  assert.ok(bird.pitch > -.4, 'the bird should pull out before scraping the terrain');
+  const diveSpeed = bird.speed;
+  updateBird(bird, idle, 1 / 60);
+  assert.ok(bird.speed > bird.cruiseSpeed && bird.speed >= diveSpeed - 1, 'release should preserve glide momentum');
+});
+
 test('flapping eases into a glide after takeoff and rises with active lift', () => {
   const bird = createBird(home, seed);
   issueCommand(bird, 'fly', world);

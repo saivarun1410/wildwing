@@ -182,7 +182,11 @@ function updateAmbient(dt) {
 }
 
 function updateCamera(dt) {
-  const forward = new THREE.Vector3(Math.sin(bird.heading), 0, -Math.cos(bird.heading));
+  const forward = new THREE.Vector3(
+    Math.sin(bird.heading) * Math.cos(bird.pitch),
+    Math.sin(bird.pitch),
+    -Math.cos(bird.heading) * Math.cos(bird.pitch)
+  );
   const distance = 20 + bird.speed * .18;
   const targetPosition = new THREE.Vector3(bird.x, bird.y, bird.z).addScaledVector(forward, -distance).add(new THREE.Vector3(0, 6, 0));
   const lookAt = new THREE.Vector3(bird.x, bird.y + 1.5, bird.z).addScaledVector(forward, 10);

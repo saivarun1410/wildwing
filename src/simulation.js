@@ -150,17 +150,26 @@ export function updateBird(bird, controls, dt) {
 
   bird.heading += turn * dt * (bird.speed < 7 ? 1.25 : .95);
   bird.bank = approach(bird.bank, -turn * .45, dt * 1.8);
-  bird.pitch = approach(bird.pitch, clamp(climb, -.9, .9) * .43, dt * 1.2);
+  const terrainBelow = terrainHeight(bird.x, bird.z, bird.seed);
+  const clearance = bird.y - Math.max(WATER_LEVEL + .8, terrainBelow + 1.4);
+  const diveLimit = clearance < 18 ? -clamp((clearance - 3) / 24, 0, 1) : -.72;
+  const targetPitch = bird.mode === 'flying' && climb < 0
+    ? Math.max(clamp(climb, -1, 0) * .72, diveLimit)
+    : clamp(climb, -.9, .9) * .43;
+  bird.pitch = approach(bird.pitch, targetPitch, dt * (climb < 0 ? 1.5 : 1.2));
   if (huntTargetHeight !== null) bird.pitch = approach(bird.pitch, huntPitch, dt * 2.4);
-  bird.speed = approach(bird.speed, desiredSpeed + (flightControls.flap ? 4 : 0), dt * (flightControls.fast ? 40 : 24));
+  if (bird.mode === 'flying' && climb < 0) desiredSpeed = Math.min(145, desiredSpeed + Math.max(0, -bird.pitch) * 100);
+  const targetSpeed = desiredSpeed + (flightControls.flap ? 4 : 0);
+  bird.speed = approach(bird.speed, targetSpeed, dt * (bird.mode === 'approaching' ? 24 : targetSpeed > bird.speed ? (flightControls.fast ? 40 : 30) : 11));
   if (autopilotPoint) {
     const dx = autopilotPoint.x - bird.x, dz = autopilotPoint.z - bird.z;
     const distance = Math.hypot(dx, dz);
     const step = Math.min(distance, bird.speed * dt);
     if (distance > .001) { bird.x += dx / distance * step; bird.z += dz / distance * step; }
   } else {
-    bird.x += Math.sin(bird.heading) * bird.speed * dt;
-    bird.z -= Math.cos(bird.heading) * bird.speed * dt;
+    const horizontalSpeed = Math.cos(bird.pitch) * bird.speed;
+    bird.x += Math.sin(bird.heading) * horizontalSpeed * dt;
+    bird.z -= Math.cos(bird.heading) * horizontalSpeed * dt;
   }
   bird.y = huntTargetHeight === null ? bird.y + (Math.sin(bird.pitch) * bird.speed + (flightControls.flap ? 2.5 : 0)) * dt : approach(bird.y, huntTargetHeight, dt * 52);
   const terrain = terrainHeight(bird.x, bird.z, bird.seed);
