@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CITY, TILE_SIZE, hash2 } from './world.js';
+import { addVegetation } from './foliage.js';
 
 const streetColor = 0x41494a;
 const sidewalkColor = 0x999891;
@@ -107,6 +108,16 @@ export function addCity(group, tx, tz, seed, detailed) {
     const park = hash2(ix, iz, seed + 1640) < .12;
     if (park) {
       box(group, cx, 10.23, cz, 54, .11, 54, new THREE.MeshStandardMaterial({ color: 0x5b6b53, roughness: 1 }));
+      box(group, cx, 10.3, cz, 3.2, .04, 50, pavement);
+      const parkTrees = [];
+      for (let treeIndex = 0; treeIndex < 4; treeIndex++) {
+        const x = cx + (treeIndex % 2 ? 15 : -15);
+        const z = cz + (treeIndex < 2 ? -15 : 15);
+        parkTrees.push({ id: `park:${ix}:${iz}:${treeIndex}`, x, y: 10.29, z,
+          scale: .72 + hash2(ix * 4 + treeIndex, iz, seed + 1680) * .26,
+          species: treeIndex % 2 ? 'birch' : 'oak' });
+      }
+      addVegetation(group, parkTrees, seed);
       continue;
     }
     const tower = hash2(ix, iz, seed + 1641) > .56;

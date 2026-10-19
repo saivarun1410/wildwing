@@ -19,6 +19,7 @@ Open the [live demo](https://wildwing.pages.dev/?seed=123456). A browser with We
 | `Shift` | Maximum speed while held |
 | `Space` | Flap for lift |
 | `T` | Switch between day and night |
+| `M` or click the mini-map | Open or close the large world map |
 | Drag the world | Steer the bird |
 | `P` | Find a branch and perch |
 | `H` | Hunt fish from water |
@@ -27,7 +28,7 @@ Open the [live demo](https://wildwing.pages.dev/?seed=123456). A browser with We
 
 Action buttons are available on screen. A hunt, perch, or nest task continues even if a movement key was already held when it started; fresh steering input returns control to you.
 
-After takeoff the bird climbs to cloud height and mostly glides. Active lift produces slower, smoother wingbeats. Hunts use a fast diving approach; landing on a branch uses a slower approach. Fly north to cross the mountains and find mountain waterfalls, east to reach the ocean and great waterfall, or southwest to fly over the city.
+After takeoff the bird climbs to cloud height and mostly glides. Active lift produces slower, smoother wingbeats. Hunts use a fast diving approach; landing on a branch uses a slower approach. The city center is about 800 m west-southwest of home; open the large map to see the exact distance and face it. Fly north to cross the mountains and find mountain waterfalls, or east to reach the ocean and great waterfall.
 
 The mini-map shows nearby land, water, trees, the home tree, and the bird's heading. Progress is saved locally per seed. Add `?seed=123456` to the URL to reopen a particular world.
 
@@ -58,9 +59,10 @@ npx wrangler pages deploy dist --project-name wildwing --branch main
 - `src/scene.js` renders streaming terrain tiles, vegetation, water, sky, birds, and the growing nest with Three.js.
 - `src/ecosystem.js` adds roaming deer, bears, monkeys, foxes, and scattered waterfalls.
 - `src/city.js` adds the southwestern downtown, road grid, buildings, cars, and trucks.
-- `src/main.js` connects controls, commands, camera, mini-map, audio, and local progress.
+- `src/map.js` defines world-map landmarks, bearings, and distances.
+- `src/main.js` connects controls, commands, camera, both maps, audio, and local progress.
 
-The environment and birds are procedurally modeled in a stylized naturalistic form. No external 3D model assets are required. Tree and ground detail use instanced meshes to keep draw calls bounded as terrain tiles stream in and out.
+The environment and birds are procedurally modeled. Trees and ground cover use locally bundled CC0 foliage textures on instanced meshes. Detailed vegetation is limited to nearby terrain tiles; distant tiles use lower-detail terrain.
 
 ## License
 

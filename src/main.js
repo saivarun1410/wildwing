@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { createEnvironment, createBirdVisual, animateBirdVisual } from './scene.js';
 import { createBird, issueCommand, updateBird } from './simulation.js';
-import { terrainHeight, landscapeAt, hash2, nearestSite } from './world.js';
+import { CITY, terrainHeight, landscapeAt, hash2, nearestSite } from './world.js';
+import { mapLandmarks, mapDistance, mapHeading, mapBearing, mapPoint } from './map.js';
 import './style.css';
 
 const $ = selector => document.querySelector(selector);
@@ -56,6 +57,8 @@ let running = false, time = 0, lastFrame = 0, lastHud = 0, lastMap = 0, lastSave
 let audio = null, soundOn = false;
 const effects = [];
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+const landmarks = mapLandmarks(seed);
+let mapOpen = false, mapSpan = 2400, mapCenter = { x: 0, z: 0 }, selectedPlace = 'city', mapCacheKey = '';
 
 function notice(message) {
   const el = $('#notice'); el.textContent = message; el.classList.add('visible');
@@ -86,6 +89,19 @@ $('#enterButton').addEventListener('click', () => {
 $('#helpButton').addEventListener('click', () => { $('#help').hidden = false; });
 $('#closeHelp').addEventListener('click', () => { $('#help').hidden = true; });
 $('#help').addEventListener('click', event => { if (event.target === $('#help')) $('#help').hidden = true; });
+$('#openMap').addEventListener('click', openWorldMap);
+$('#closeMap').addEventListener('click', closeWorldMap);
+$('#worldMap').addEventListener('click', event => { if (event.target === $('#worldMap')) closeWorldMap(); });
+$('#zoomIn').addEventListener('click', () => { mapSpan = Math.max(600, mapSpan / 1.5); drawWorldMap(); });
+$('#zoomOut').addEventListener('click', () => { mapSpan = Math.min(6000, mapSpan * 1.5); drawWorldMap(); });
+$('#centerBird').addEventListener('click', () => { mapCenter = { x: bird.x, z: bird.z }; drawWorldMap(); });
+$('#centerHome').addEventListener('click', () => { mapCenter = { x: 0, z: 0 }; drawWorldMap(); });
+$('#facePlace').addEventListener('click', () => {
+  const place = landmarks.find(item => item.id === selectedPlace);
+  bird.heading = mapHeading(bird, place); bird.bank = 0;
+  closeWorldMap();
+  notice(`Facing ${place.label.toLowerCase()} · ${mapBearing(bird, place)} · ${Math.round(mapDistance(bird, place))} m`);
+});
 $('#soundButton').addEventListener('click', () => {
   soundOn = !soundOn; if (soundOn) startAudio();
   if (audio) audio.master.gain.setTargetAtTime(soundOn ? .9 : 0, audio.context.currentTime, .3);
@@ -95,8 +111,10 @@ $('#soundButton').addEventListener('click', () => {
 $('#timeToggle').addEventListener('click', toggleDayNight);
 
 addEventListener('keydown', event => {
-  if (event.key === 'Escape') { $('#help').hidden = true; return; }
+  if (event.key === 'Escape') { $('#help').hidden = true; if (mapOpen) closeWorldMap(); return; }
   if (event.target instanceof HTMLInputElement) return;
+  if (event.key.toLowerCase() === 'm' && running && !event.repeat) { event.preventDefault(); mapOpen ? closeWorldMap() : openWorldMap(); return; }
+  if (mapOpen) { event.preventDefault(); return; }
   if (event.key.toLowerCase() === 't' && running && !event.repeat) { event.preventDefault(); toggleDayNight(); return; }
   if (event.repeat && ['f', 'p', 'h', 'j', 'n'].includes(event.key.toLowerCase())) return;
   const shortcuts = { f: 'fly', p: 'perch', h: 'hunt fish', j: 'hunt land', n: 'build nest' };
@@ -196,6 +214,8 @@ function updateHud() {
   $('#fieldEvent').textContent = bird.lastEvent;
   $('#actionPrompt').textContent = bird.mode === 'perched' ? 'PRESS F TO FLY' : bird.mode === 'approaching' ? bird.action.toUpperCase() : 'DRAG OR USE THE KEYS TO STEER';
   $('#compassLabel').textContent = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][((Math.round(bird.heading / (Math.PI / 4)) % 8) + 8) % 8];
+  const city = landmarks[0];
+  $('#cityRoute').textContent = `CITY CENTER · ${Math.round(mapDistance(bird, city))} M ${mapBearing(bird, city)}`;
 }
 
 const map = $('#map'), mapCtx = map.getContext('2d');
@@ -217,6 +237,77 @@ function drawMap() {
   mapCtx.save(); mapCtx.translate(width / 2, height / 2); mapCtx.rotate(bird.heading);
   mapCtx.fillStyle = '#fff6df'; mapCtx.strokeStyle = '#193741'; mapCtx.lineWidth = 2;
   mapCtx.beginPath(); mapCtx.moveTo(0, -10); mapCtx.lineTo(-6, 7); mapCtx.lineTo(0, 3); mapCtx.lineTo(6, 7); mapCtx.closePath(); mapCtx.stroke(); mapCtx.fill(); mapCtx.restore();
+}
+
+const worldMapCanvas = $('#worldMapCanvas'), worldMapCtx = worldMapCanvas.getContext('2d');
+const mapBase = document.createElement('canvas'); mapBase.width = mapBase.height = 720;
+const mapBaseCtx = mapBase.getContext('2d');
+
+function openWorldMap() {
+  if (!running) return;
+  mapOpen = true; key.clear(); pointerTurn = pointerClimb = 0;
+  $('#worldMap').hidden = false;
+  drawWorldMap();
+  $('#closeMap').focus();
+}
+
+function closeWorldMap() {
+  mapOpen = false;
+  $('#worldMap').hidden = true;
+  $('#openMap').focus();
+}
+
+function drawWorldMap() {
+  const size = worldMapCanvas.width, cells = 120, step = size / cells;
+  const cacheKey = `${mapCenter.x}:${mapCenter.z}:${mapSpan}`;
+  if (cacheKey !== mapCacheKey) {
+    mapBaseCtx.fillStyle = '#527b82'; mapBaseCtx.fillRect(0, 0, size, size);
+    const colors = { water: '#4d7e8d', wetland: '#668d78', meadow: '#83996d', woodland: '#426b52', coast: '#bfad81', mountain: '#728571', alpine: '#d6dad5', city: '#777d78' };
+    for (let iz = 0; iz < cells; iz++) for (let ix = 0; ix < cells; ix++) {
+      const x = mapCenter.x + ((ix + .5) / cells - .5) * mapSpan;
+      const z = mapCenter.z + ((iz + .5) / cells - .5) * mapSpan;
+      const y = terrainHeight(x, z, seed);
+      mapBaseCtx.fillStyle = colors[landscapeAt(x, z, seed, y)];
+      mapBaseCtx.fillRect(ix * step, iz * step, step + .5, step + .5);
+    }
+    const topLeft = mapPoint(CITY.minX, CITY.minZ, mapCenter, mapSpan, size);
+    const bottomRight = mapPoint(CITY.maxX, CITY.maxZ, mapCenter, mapSpan, size);
+    mapBaseCtx.strokeStyle = '#e7be91'; mapBaseCtx.lineWidth = 2;
+    mapBaseCtx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+    mapCacheKey = cacheKey;
+  }
+  worldMapCtx.drawImage(mapBase, 0, 0);
+  const selected = landmarks.find(place => place.id === selectedPlace);
+  const birdPoint = mapPoint(bird.x, bird.z, mapCenter, mapSpan, size);
+  const targetPoint = mapPoint(selected.x, selected.z, mapCenter, mapSpan, size);
+  worldMapCtx.strokeStyle = '#fff1cc'; worldMapCtx.lineWidth = 3;
+  worldMapCtx.setLineDash([10, 8]); worldMapCtx.beginPath(); worldMapCtx.moveTo(birdPoint.x, birdPoint.y); worldMapCtx.lineTo(targetPoint.x, targetPoint.y); worldMapCtx.stroke(); worldMapCtx.setLineDash([]);
+  const homePoint = mapPoint(0, 0, mapCenter, mapSpan, size);
+  worldMapCtx.fillStyle = '#ffdfa9'; worldMapCtx.font = 'bold 17px Barlow, sans-serif';
+  worldMapCtx.fillText('✺ HOME', homePoint.x + 8, homePoint.y - 9);
+  for (const place of landmarks) {
+    const p = mapPoint(place.x, place.z, mapCenter, mapSpan, size);
+    worldMapCtx.beginPath(); worldMapCtx.arc(p.x, p.y, place.id === selectedPlace ? 9 : 6, 0, Math.PI * 2);
+    worldMapCtx.fillStyle = place.color; worldMapCtx.fill();
+    worldMapCtx.strokeStyle = '#173036'; worldMapCtx.lineWidth = 2; worldMapCtx.stroke();
+    worldMapCtx.font = 'bold 17px Barlow, sans-serif'; worldMapCtx.lineWidth = 4;
+    worldMapCtx.strokeStyle = '#10282b'; worldMapCtx.strokeText(place.label.toUpperCase(), p.x + 12, p.y + 5);
+    worldMapCtx.fillStyle = '#fff7e8'; worldMapCtx.fillText(place.label.toUpperCase(), p.x + 12, p.y + 5);
+  }
+  worldMapCtx.save(); worldMapCtx.translate(birdPoint.x, birdPoint.y); worldMapCtx.rotate(bird.heading);
+  worldMapCtx.beginPath(); worldMapCtx.moveTo(0, -13); worldMapCtx.lineTo(-8, 9); worldMapCtx.lineTo(0, 4); worldMapCtx.lineTo(8, 9); worldMapCtx.closePath();
+  worldMapCtx.fillStyle = '#fff7dc'; worldMapCtx.strokeStyle = '#1a3840'; worldMapCtx.lineWidth = 3; worldMapCtx.stroke(); worldMapCtx.fill(); worldMapCtx.restore();
+  $('#mapScale').textContent = `${(mapSpan / 1000).toFixed(1)} KM ACROSS`;
+  const places = $('#mapPlaces'); places.replaceChildren();
+  for (const place of landmarks) {
+    const button = document.createElement('button'); button.type = 'button';
+    button.setAttribute('aria-pressed', String(selectedPlace === place.id));
+    const label = document.createElement('span'); label.textContent = place.label;
+    const route = document.createElement('span'); route.textContent = `${Math.round(mapDistance(bird, place))} M ${mapBearing(bird, place)}`;
+    button.append(label, route);
+    button.addEventListener('click', () => { selectedPlace = place.id; drawWorldMap(); });
+    places.append(button);
+  }
 }
 
 function startAudio() {
@@ -289,7 +380,7 @@ addEventListener('resize', () => {
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
-  if (running && !document.hidden) {
+  if (running && !document.hidden && !mapOpen) {
     const simDt = motionPreference.matches ? dt * .55 : dt;
     time += simDt;
     const control = controls();

@@ -2,21 +2,11 @@ import * as THREE from 'three';
 import { TILE_SIZE, terrainHeight, landscapeAt, treeSites, fishSites, preySites, homeSite, hash2, noise, greatFallsSite } from './world.js';
 import { addLandAnimals, updateLandAnimals, addWaterfalls, updateWaterfalls, sharedAnimalGeometry } from './ecosystem.js';
 import { addCity, updateCity } from './city.js';
+import { addVegetation, addGroundDetail, sharedFoliageMaterials, sharedFoliageGeometries } from './foliage.js';
 
 const color = hex => new THREE.Color(hex);
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const dummy = new THREE.Object3D();
-const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6a5744, roughness: 1 });
-const branchMaterial = new THREE.MeshStandardMaterial({ color: 0x695642, roughness: 1 });
-const birchMaterial = new THREE.MeshStandardMaterial({ color: 0xb5b2a0, roughness: 1 });
-const canopyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
-const leafMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
-const canopyPalettes = {
-  oak: [0x4d6043, 0x596a48, 0x6e7652, 0x656b45],
-  birch: [0x71805b, 0x89916b, 0x697b5e, 0x8d8d65],
-  pine: [0x34483f, 0x3b5148, 0x4a5a4e, 0x475446],
-  willow: [0x627251, 0x74815c, 0x89906b, 0x687b56]
-};
 const groundPalettes = {
   meadow: [0x66744f, 0x989166], woodland: [0x526b50, 0x78815b],
   wetland: [0x577265, 0x849879], coast: [0x95916d, 0xb5a378],
@@ -135,7 +125,7 @@ function terrainTile(tx, tz, seed, consumed, detailed = true) {
   let wildlife = null;
   const city = addCity(group, tx, tz, seed, detailed);
   if (detailed) {
-    addVegetation(group, trees, tx, tz, seed);
+    addVegetation(group, trees, seed);
     addGroundDetail(group, tx, tz, seed);
     wildlife = addWildlife(group, fish, prey, seed);
     wildlife.animals = addLandAnimals(group, tx, tz, seed);
@@ -156,134 +146,6 @@ function terrainTile(tx, tz, seed, consumed, detailed = true) {
 
 function setInstance(instanced, i, position, scale, rotation = 0) {
   dummy.position.set(...position); dummy.scale.set(...scale); dummy.rotation.set(0, rotation, 0); dummy.updateMatrix(); instanced.setMatrixAt(i, dummy.matrix);
-}
-
-function addVegetation(group, trees, tx, tz, seed) {
-  if (!trees.length) return;
-  const trunkGeometry = new THREE.CylinderGeometry(.25, .58, 1, 9);
-  const trunks = new THREE.InstancedMesh(trunkGeometry, trunkMaterial, trees.length);
-  const birches = new THREE.InstancedMesh(trunkGeometry, birchMaterial, trees.length);
-  const branches = new THREE.InstancedMesh(new THREE.CylinderGeometry(.06, .18, 1, 7), branchMaterial, trees.length * 20);
-  const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), canopyMaterial, trees.length * 36);
-  const conifers = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 6), canopyMaterial, trees.length * 64);
-  const frondGeometry = new THREE.ConeGeometry(.18, 1, 5); frondGeometry.rotateZ(Math.PI);
-  const willowFronds = new THREE.InstancedMesh(frondGeometry, leafMaterial, trees.length * 18);
-  const leafShape = new THREE.Shape();
-  leafShape.moveTo(0, -.5); leafShape.quadraticCurveTo(.39, -.13, .14, .36); leafShape.lineTo(0, .56);
-  leafShape.quadraticCurveTo(-.35, .13, 0, -.5);
-  const leaves = new THREE.InstancedMesh(new THREE.ShapeGeometry(leafShape, 3), leafMaterial, trees.length * 260);
-  let trunkCount = 0, birchCount = 0, branchCount = 0, crownCount = 0, leafCount = 0, coniferCount = 0, frondCount = 0;
-  const setBranch = (start, end, radius) => {
-    const a = v(...start), b = v(...end), delta = b.clone().sub(a);
-    dummy.position.copy(a).add(b).multiplyScalar(.5);
-    dummy.quaternion.setFromUnitVectors(v(0, 1, 0), delta.clone().normalize());
-    dummy.scale.set(radius, delta.length(), radius);
-    dummy.updateMatrix(); branches.setMatrixAt(branchCount++, dummy.matrix);
-  };
-  trees.forEach((tree, i) => {
-    const s = tree.scale, species = tree.species || 'oak';
-    const trunkHeight = s * (species === 'birch' ? 12.4 : species === 'pine' ? 11.8 : species === 'willow' ? 8.4 : 9.8);
-    const stem = species === 'birch' ? birches : trunks;
-    setInstance(stem, species === 'birch' ? birchCount++ : trunkCount++, [tree.x, tree.y + trunkHeight * .5, tree.z], [s * (species === 'birch' ? .52 : species === 'pine' ? .72 : 1), trunkHeight, s * (species === 'birch' ? .52 : species === 'pine' ? .72 : 1)]);
-    const start = v(tree.x, tree.y + s * 6.9, tree.z), end = v(tree.branch.x, tree.branch.y, tree.branch.z);
-    setBranch([start.x, start.y, start.z], [end.x, end.y, end.z], s * .65);
-    const forkCount = species === 'willow' ? 8 : species === 'pine' ? 6 : species === 'oak' ? 7 : 5;
-    for (let j = 0; j < forkCount; j++) {
-      const angle = j * 2.399 + hash2(i, j, seed + 251);
-      const radius = s * (species === 'birch' ? 1.8 : species === 'pine' ? 2.8 - j * .22 : species === 'willow' ? 4 : 3.8);
-      const y = tree.y + s * (species === 'willow' ? 8.6 - j * .18 : species === 'pine' ? 5.6 + j * .85 : species === 'birch' ? 9.8 + j * .7 : 8.3 + j * .56);
-      const tip = [tree.x + Math.cos(angle) * radius, y, tree.z + Math.sin(angle) * radius];
-      setBranch([tree.x, tree.y + trunkHeight * (.48 + j * .054), tree.z], tip, s * (species === 'birch' ? .22 : .3));
-      if (species !== 'pine') {
-        const side = angle + (j % 2 ? .68 : -.68);
-        setBranch(tip, [tip[0] + Math.cos(side) * radius * .44, tip[1] + s * (.5 + j % 3 * .22), tip[2] + Math.sin(side) * radius * .44], s * .13);
-      }
-    }
-    const palette = canopyPalettes[species];
-    if (species === 'pine') {
-      for (let j = 0; j < 48; j++) {
-        const tier = Math.floor(j / 8), angle = j * 2.399 + hash2(i, j, seed + 260) * .8;
-        const taper = 1 - tier / 7;
-        const radius = s * (1.1 + hash2(i, j, seed + 261) * 2.4) * taper;
-        const height = s * (4.5 + tier * 1.45 + hash2(i, j, seed + 262) * 1.15);
-        dummy.position.set(tree.x + Math.cos(angle) * radius, tree.y + height, tree.z + Math.sin(angle) * radius);
-        dummy.rotation.set((hash2(i, j, seed + 263) - .5) * .28, angle, (hash2(i, j, seed + 264) - .5) * .25);
-        dummy.scale.set(s * (.43 + taper * .35), s * (1.6 + taper * 1.3), s * (.5 + taper * .45));
-        dummy.updateMatrix(); conifers.setMatrixAt(coniferCount, dummy.matrix);
-        conifers.setColorAt(coniferCount++, new THREE.Color(palette[j % palette.length]).multiplyScalar(.82 + hash2(i, j, seed + 265) * .32));
-      }
-      return;
-    }
-    const clusters = species === 'willow' ? 27 : species === 'birch' ? 25 : 32;
-    const spread = species === 'birch' ? 2.25 : species === 'willow' ? 4.2 : 4.1;
-    for (let j = 0; j < clusters; j++) {
-      const angle = j * 2.399 + hash2(i, j, seed + 252) * .9;
-      const radial = Math.sqrt((j + .5) / clusters) * spread * s;
-      const cx = tree.x + Math.cos(angle) * radial;
-      const cz = tree.z + Math.sin(angle) * radial;
-      if (tree.id === 'home' && Math.hypot(cx - tree.branch.x, cz - tree.branch.z) < 2.8) continue;
-      const cy = tree.y + s * (species === 'birch' ? 10.5 + hash2(i, j, seed + 253) * 4.2 : species === 'willow' ? 9.2 + hash2(i, j, seed + 253) * 1.9 - radial * .43 / s : 9.2 + hash2(i, j, seed + 253) * 3.7 - radial * .1 / s);
-      const size = s * (species === 'birch' ? .38 + hash2(i, j, seed + 254) * .28 : .44 + hash2(i, j, seed + 254) * .44);
-      dummy.position.set(cx, cy, cz);
-      dummy.rotation.set(0, angle, 0);
-      dummy.scale.set(size * (species === 'willow' ? 1.25 : 1.1), size * (species === 'birch' ? 1.25 : .78), size * (species === 'willow' ? 1.25 : 1.05));
-      dummy.updateMatrix(); crowns.setMatrixAt(crownCount, dummy.matrix);
-      crowns.setColorAt(crownCount++, new THREE.Color(palette[j % palette.length]).multiplyScalar(.88 + hash2(i, j, seed + 263) * .22));
-      if (species === 'willow' && j > 8 && j % 2 === 0) {
-        const hang = s * (2.4 + hash2(i, j, seed + 264) * 1.8);
-        setInstance(willowFronds, frondCount, [cx, cy - hang * .5, cz], [s * .78, hang, s * .78], angle);
-        willowFronds.setColorAt(frondCount++, new THREE.Color(palette[(j + 1) % palette.length]));
-      }
-      for (let k = 0; k < 7; k++) {
-        const a = angle + k * 1.57 + hash2(i + j, k, seed + 255) * .8;
-        const offset = size * (.45 + hash2(i + k, j, seed + 256) * .55);
-        dummy.position.set(cx + Math.cos(a) * offset, cy + (hash2(i, j + k, seed + 257) - .5) * size, cz + Math.sin(a) * offset);
-        dummy.rotation.set((hash2(i, j + k, seed + 258) - .5) * 2.3, a, (hash2(i + j, k, seed + 259) - .5) * 1.3);
-        dummy.scale.set(size * .65, size * 1.1, size * .65);
-        dummy.updateMatrix(); leaves.setMatrixAt(leafCount, dummy.matrix);
-        leaves.setColorAt(leafCount++, new THREE.Color(palette[(j + k + 1) % palette.length]));
-      }
-    }
-  });
-  for (const [object, count] of [[trunks, trunkCount], [birches, birchCount], [branches, branchCount], [crowns, crownCount], [leaves, leafCount], [conifers, coniferCount], [willowFronds, frondCount]]) {
-    object.count = count; object.instanceMatrix.needsUpdate = true; object.castShadow = object !== leaves && innerWidth > 700; group.add(object);
-    if (object.instanceColor) object.instanceColor.needsUpdate = true;
-  }
-}
-
-function addGroundDetail(group, tx, tz, seed) {
-  const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x9b9b87, roughness: 1, flatShading: true });
-  const rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), rockMaterial, 24);
-  let rockCount = 0;
-  for (let i = 0; i < 24; i++) {
-    const x = (tx + hash2(i, tz * 17, seed + 441)) * TILE_SIZE, z = (tz + hash2(tx * 19, i, seed + 442)) * TILE_SIZE;
-    const y = terrainHeight(x, z, seed), s = .3 + hash2(i, tx, seed + 443) * 1.2;
-    if (y < .5 || landscapeAt(x, z, seed, y) === 'city') continue;
-    setInstance(rocks, rockCount++, [x, y + s * .24, z], [s, s * .52, s * 1.2], hash2(i, tz, seed + 444) * 6);
-  }
-  rocks.count = rockCount; group.add(rocks);
-  const grassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
-  const grassColors = {
-    meadow: [0x66734d, 0x7b8057, 0x8d8860, 0x929071],
-    woodland: [0x526947, 0x647855, 0x7c805b],
-    wetland: [0x5c775e, 0x77916d, 0x8e9b78],
-    coast: [0x8b8c66, 0xa49a6d, 0xb4a77a],
-    mountain: [0x65765b, 0x7e8565, 0x8d9078]
-  };
-  const grass = new THREE.InstancedMesh(new THREE.ConeGeometry(.38, 1, 3), grassMat, 190);
-  let grassCount = 0;
-  for (let i = 0; i < 190; i++) {
-    const x = (tx + hash2(i, tz * 23, seed + 511)) * TILE_SIZE, z = (tz + hash2(tx * 29, i, seed + 512)) * TILE_SIZE;
-    const y = terrainHeight(x, z, seed), s = .5 + hash2(i, tx, seed + 513) * 1.2;
-    if (y < .5 || y > 105) continue;
-    const landscape = landscapeAt(x, z, seed, y);
-    if (landscape === 'city') continue;
-    const palette = grassColors[landscape] || grassColors.meadow;
-    const height = landscape === 'mountain' ? s * .62 : s;
-    setInstance(grass, grassCount, [x, y + height * .4, z], [s, height, s], hash2(i, tz, seed + 514) * 6);
-    grass.setColorAt(grassCount++, new THREE.Color(palette[Math.floor(hash2(i, tx + tz, seed + 515) * palette.length)]));
-  }
-  grass.count = grassCount; grass.castShadow = false; if (grass.instanceColor) grass.instanceColor.needsUpdate = true; group.add(grass);
 }
 
 function addWildlife(group, fish, prey, seed) {
@@ -337,7 +199,7 @@ function animateWildlife(tile, time, consumed) {
 
 function makeHome(scene, site, seed) {
   const root = new THREE.Group(); scene.add(root);
-  addVegetation(root, [{ ...site, species: 'oak' }], 0, 0, seed);
+  addVegetation(root, [{ ...site, species: 'oak' }], seed);
   const nest = new THREE.Group(); nest.position.set(site.branch.x + 1.25, site.branch.y + .13, site.branch.z + .45); root.add(nest);
   const nestMat = new THREE.MeshStandardMaterial({ color: 0x745638, roughness: 1, side: THREE.DoubleSide });
   const ring = mesh(new THREE.TorusGeometry(1.2, .22, 5, 16), nestMat, nest); ring.rotation.x = Math.PI / 2;
@@ -449,9 +311,9 @@ export function createEnvironment(seed, renderer) {
   function disposeTile(tile) {
     scene.remove(tile.group);
     tile.group.traverse(obj => {
-      if (obj.geometry && !sharedAnimalGeometry.has(obj.geometry)) obj.geometry.dispose();
+      if (obj.geometry && !sharedAnimalGeometry.has(obj.geometry) && !sharedFoliageGeometries.has(obj.geometry)) obj.geometry.dispose();
       for (const material of (Array.isArray(obj.material) ? obj.material : [obj.material])) {
-        if (material && ![trunkMaterial, branchMaterial, birchMaterial, canopyMaterial, leafMaterial].includes(material)) material.dispose();
+        if (material && !sharedFoliageMaterials.has(material)) material.dispose();
       }
     });
   }
