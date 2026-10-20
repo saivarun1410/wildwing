@@ -6,6 +6,14 @@ import * as THREE from 'three';
 import { addLandAnimals, updateLandAnimals, addWaterfalls } from '../src/ecosystem.js';
 import { addCity, updateCity } from '../src/city.js';
 import { treeSites, terrainHeight, landscapeAt, mountainFallsSites } from '../src/world.js';
+import { roundParticleTexture } from '../src/weather.js';
+
+test('snow and stars use a soft round particle sprite', () => {
+  const texture = roundParticleTexture();
+  const pixels = texture.image.data;
+  assert.equal(pixels[3], 0, 'corners must be transparent');
+  assert.equal(pixels[(16 * 32 + 16) * 4 + 3], 255, 'particle center must be opaque');
+});
 
 test('3D world constructs, streams terrain, and animates bird models', () => {
   const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;

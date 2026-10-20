@@ -14,6 +14,20 @@ export const WEATHER_TYPES = Object.freeze({
 export const weatherIds = Object.keys(WEATHER_TYPES);
 export const weatherType = id => WEATHER_TYPES[id] || WEATHER_TYPES.pleasant;
 
+export function roundParticleTexture() {
+  const size = 32, pixels = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const distance = Math.hypot(x - (size - 1) / 2, y - (size - 1) / 2) / (size * .44);
+    const alpha = Math.max(0, Math.min(1, (1 - distance) * 4));
+    const index = (y * size + x) * 4;
+    pixels[index] = pixels[index + 1] = pixels[index + 2] = 255;
+    pixels[index + 3] = Math.round(alpha * 255);
+  }
+  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createWeatherEffects(scene, seed) {
   const rainCount = 750, snowCount = 320;
   const rainGeometry = new THREE.BufferGeometry();
@@ -22,7 +36,7 @@ export function createWeatherEffects(scene, seed) {
   rain.frustumCulled = false; rain.visible = false; rain.userData.kind = 'weather-rain'; scene.add(rain);
   const snowGeometry = new THREE.BufferGeometry();
   snowGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(snowCount * 3), 3));
-  const snow = new THREE.Points(snowGeometry, new THREE.PointsMaterial({ color: 0xf5f8f6, size: .48, sizeAttenuation: true, transparent: true, opacity: .88, depthWrite: false, fog: true }));
+  const snow = new THREE.Points(snowGeometry, new THREE.PointsMaterial({ color: 0xf5f8f6, map: roundParticleTexture(), size: .48, sizeAttenuation: true, transparent: true, opacity: .88, depthWrite: false, fog: true }));
   snow.frustumCulled = false; snow.visible = false; snow.userData.kind = 'weather-snow'; scene.add(snow);
 
   function update(kind, bird, time) {

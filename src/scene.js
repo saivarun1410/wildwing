@@ -4,7 +4,7 @@ import { addLandAnimals, updateLandAnimals, addWaterfalls, updateWaterfalls, sha
 import { addCity, updateCity } from './city.js';
 import { addVegetation, addGroundDetail, sharedFoliageMaterials, sharedFoliageGeometries } from './foliage.js';
 import { birdType } from './birds.js';
-import { createWeatherEffects, weatherType, WEATHER_TYPES } from './weather.js';
+import { createWeatherEffects, weatherType, WEATHER_TYPES, roundParticleTexture } from './weather.js';
 
 const color = hex => new THREE.Color(hex);
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -89,7 +89,7 @@ function makeCelestial(scene, seed) {
     positions.push(Math.cos(elevation) * Math.cos(angle) * 480, Math.sin(elevation) * 480, Math.cos(elevation) * Math.sin(angle) * 480);
   }
   const points = new THREE.BufferGeometry(); points.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const starMaterial = new THREE.PointsMaterial({ color: 0xf2f4ff, size: 1.8, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false });
+  const starMaterial = new THREE.PointsMaterial({ color: 0xf2f4ff, map: roundParticleTexture(), size: 2.4, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false });
   const stars = new THREE.Points(points, starMaterial); stars.userData.kind = 'stars'; group.add(stars);
   return { group, sun, moon, stars, starMaterial };
 }
@@ -262,7 +262,7 @@ function makeGrandFalls(scene, seed) {
       site.z + (hash2(i, 12, seed) - .5) * (site.width + 20));
   }
   const sprayGeometry = new THREE.BufferGeometry(); sprayGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sprayPositions, 3));
-  const spray = new THREE.Points(sprayGeometry, new THREE.PointsMaterial({ color: 0xdfeae7, size: 1.1, sizeAttenuation: true, transparent: true, opacity: .4, depthWrite: false }));
+  const spray = new THREE.Points(sprayGeometry, new THREE.PointsMaterial({ color: 0xdfeae7, map: roundParticleTexture(), size: 1.1, sizeAttenuation: true, transparent: true, opacity: .4, depthWrite: false }));
   root.add(spray);
   return { root, ribbons, spray, site };
 }
