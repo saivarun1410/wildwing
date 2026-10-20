@@ -85,7 +85,21 @@ document.querySelectorAll('[data-command]').forEach(button => button.addEventLis
 $('#enterButton').addEventListener('click', () => {
   $('#welcome').classList.add('hidden'); $('#hud').classList.add('visible'); $('#hud').setAttribute('aria-hidden', 'false');
   running = true; $('#loading').classList.add('hidden'); startAudio();
+  if (audio) audio.master.gain.setTargetAtTime(soundOn ? .9 : 0, audio.context.currentTime, .3);
 });
+function quitToMenu() {
+  if (!running) return;
+  saveProgress();
+  running = false;
+  key.clear(); pointerTurn = pointerClimb = 0; dragging = false; lastPointer = null;
+  if (mapOpen) closeWorldMap();
+  $('#help').hidden = true;
+  $('#hud').classList.remove('visible'); $('#hud').setAttribute('aria-hidden', 'true');
+  $('#welcome').classList.remove('hidden');
+  $('#enterLabel').textContent = 'Resume playing';
+  if (audio) audio.master.gain.setTargetAtTime(0, audio.context.currentTime, .2);
+  $('#enterButton').focus();
+}
 $('#helpButton').addEventListener('click', () => { $('#help').hidden = false; });
 $('#closeHelp').addEventListener('click', () => { $('#help').hidden = true; });
 $('#help').addEventListener('click', event => { if (event.target === $('#help')) $('#help').hidden = true; });
@@ -113,6 +127,7 @@ $('#timeToggle').addEventListener('click', toggleDayNight);
 addEventListener('keydown', event => {
   if (event.key === 'Escape') { $('#help').hidden = true; if (mapOpen) closeWorldMap(); return; }
   if (event.target instanceof HTMLInputElement) return;
+  if (event.key.toLowerCase() === 'q' && running) { event.preventDefault(); if (!event.repeat) quitToMenu(); return; }
   if (event.key.toLowerCase() === 'm' && running && !event.repeat) { event.preventDefault(); mapOpen ? closeWorldMap() : openWorldMap(); return; }
   if (mapOpen) { event.preventDefault(); return; }
   if (event.key.toLowerCase() === 't' && running && !event.repeat) { event.preventDefault(); toggleDayNight(); return; }

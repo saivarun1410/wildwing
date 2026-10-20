@@ -27,8 +27,8 @@
         <p class="eyebrow"><span></span> BIRD SIMULATOR <span></span></p>
         <h1 id="welcomeTitle">WILDWING</h1>
         <p class="welcome-copy">You're a bird in a wide, open world. Fly where you want. Land on branches, hunt for food, and build a nest.</p>
-        <button id="enterButton" class="primary-button">Start playing <span>↗</span></button>
-        <p class="welcome-sub">PRESS F TO FLY · T FOR DAY / NIGHT · M FOR MAP<br>NORTH TO SNOW · EAST TO THE OCEAN · WEST-SOUTHWEST TO THE CITY</p>
+        <button id="enterButton" class="primary-button"><span id="enterLabel">Start playing</span><span>↗</span></button>
+        <p class="welcome-sub">PRESS F TO FLY · T FOR DAY / NIGHT · M FOR MAP · Q TO QUIT<br>NORTH TO SNOW · EAST TO THE OCEAN · WEST-SOUTHWEST TO THE CITY</p>
       </div>
     </section>
 
@@ -54,7 +54,7 @@
       <div class="flight-tip" id="flightTip">DRAG TO STEER</div>
 
       <section class="action-bar" aria-label="Bird actions">
-        <div class="control-note"><strong id="actionPrompt">PRESS F TO FLY</strong><span>W / S SPEED · A / D TURN · ↑ / ↓ CLIMB · DRAG TO STEER</span></div>
+        <div class="control-note"><strong id="actionPrompt">PRESS F TO FLY</strong><span>W / S SPEED · A / D TURN · ↑ / ↓ CLIMB · DRAG TO STEER · Q QUIT</span></div>
         <div class="action-buttons">
           <button data-command="fly" title="Take off or return to free flight"><kbd>F</kbd><span>FLY</span></button>
           <button data-command="perch" title="Land on a nearby branch"><kbd>P</kbd><span>PERCH</span></button>
@@ -69,7 +69,7 @@
 
     <div class="world-map" id="worldMap" role="dialog" aria-modal="true" aria-labelledby="worldMapTitle" hidden><div class="world-map-card"><div class="world-map-header"><div><span class="world-map-kicker">EXPLORE</span><h2 id="worldMapTitle">World map</h2></div><button id="closeMap" class="world-map-close" aria-label="Close world map">×</button></div><div class="world-map-layout"><div class="world-map-image"><canvas id="worldMapCanvas" width="720" height="720" aria-label="Large map of the world with your position and destinations"></canvas><div class="world-map-scale" id="mapScale">2.4 KM ACROSS</div></div><div class="world-map-sidebar"><p>The bird pauses while this map is open. Choose a place to see its direction and distance.</p><div id="mapPlaces" class="map-places" aria-label="Destinations"></div><div class="world-map-actions"><button id="facePlace">FACE SELECTED PLACE</button><button id="centerBird">CENTER ON ME</button><button id="centerHome">CENTER ON HOME</button></div><div class="world-map-zoom"><button id="zoomIn" aria-label="Zoom map in">+</button><span>ZOOM</span><button id="zoomOut" aria-label="Zoom map out">−</button></div><p class="world-map-tip">Press <kbd>F</kbd> to fly, then hold <kbd>Shift</kbd> for top speed. Press <kbd>M</kbd> or <kbd>Esc</kbd> to close this map.</p></div></div></div></div>
 
-    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">HOW TO PLAY</p><h2>Controls</h2><p>Press <kbd>F</kbd> or <kbd>W</kbd> to take off. You control where the bird goes and how it flies.</p><div class="help-grid"><span>W / S</span><span>Increase / decrease cruising speed</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Maximum speed</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer</span><span>P</span><span>Land on a branch</span><span>H / J</span><span>Hunt in water / on land</span><span>N</span><span>Build the nest in five trips</span><span>T</span><span>Switch between day and night</span><span>M</span><span>Open / close the large world map</span></div><p>Normal flight climbs to cloud height. Hold ↓ to dive, or ↑ to climb higher. The city center is about 800 m west-southwest of home; click the mini-map to see the full route. Fly north for snowy mountains or east for the ocean and great waterfall.</p></div></div>
+    <div class="help" id="help" hidden><div class="help-card"><button id="closeHelp" aria-label="Close controls">×</button><p class="eyebrow">HOW TO PLAY</p><h2>Controls</h2><p>Press <kbd>F</kbd> or <kbd>W</kbd> to take off. You control where the bird goes and how it flies.</p><div class="help-grid"><span>W / S</span><span>Increase / decrease cruising speed</span><span>A / D</span><span>Turn left / right</span><span>↑ / ↓</span><span>Climb / dive</span><span>SHIFT</span><span>Maximum speed</span><span>SPACE</span><span>Flap for lift</span><span>DRAG</span><span>Steer</span><span>P</span><span>Land on a branch</span><span>H / J</span><span>Hunt in water / on land</span><span>N</span><span>Build the nest in five trips</span><span>T</span><span>Switch between day and night</span><span>M</span><span>Open / close the large world map</span><span>Q</span><span>Quit to the start screen; progress is saved</span></div><p>Normal flight climbs to cloud height. Hold ↓ to dive, or ↑ to climb higher. The city center is about 800 m west-southwest of home; click the mini-map to see the full route. Fly north for snowy mountains or east for the ocean and great waterfall.</p></div></div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

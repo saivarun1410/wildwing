@@ -20,6 +20,7 @@ Open the [live demo](https://wildwing.pages.dev/?seed=123456). A browser with We
 | `Space` | Flap for lift |
 | `T` | Switch between day and night |
 | `M` or click the mini-map | Open or close the large world map |
+| `Q` | Quit to the start screen and save progress; resume from the same position |
 | Drag the world | Steer the bird |
 | `P` | Find a branch and perch |
 | `H` | Hunt fish from water |
