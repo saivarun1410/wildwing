@@ -1,10 +1,10 @@
 # Wildwing
 
-[▶ Play the live demo](https://wildwing.pages.dev/?seed=123456) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains, east for the ocean and waterfall, or southwest for the city. Press `H`, `J`, or `N` to try hunting and nest building.
+[▶ Play the live demo](https://wildwing.pages.dev/?seed=123456) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains, east for the ocean and waterfall, or west-southwest for the city. Press `H`, `J`, or `N` to try hunting and nest building.
 
 Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across a procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
-The world streams terrain and wildlife around the bird as it travels. Open meadows, mixed woodland, ponds, lakes, vegetated mountain slopes, snowy summits, a broad eastern ocean, waterfalls, wispy clouds, birds, and roaming land animals are generated from a shareable world seed. A city to the southwest has streets, towers, and moving cars and trucks. A large coastal waterfall is a landmark near the ocean. A day/night cycle brings a visible sun, moon, and stars. There is no fixed map edge and no automatic flight path for the player bird.
+The world streams terrain and wildlife around the bird as it travels. Open meadows, mixed woodland, ponds, lakes, vegetated mountain slopes, snowy summits, a broad eastern ocean, waterfalls, wispy clouds, birds, and roaming land animals are generated from a shareable world seed. A city to the west-southwest has streets, towers, and moving cars and trucks. A large coastal waterfall is a landmark near the ocean. A day/night cycle brings a visible sun, moon, and stars. There is no fixed map edge and no automatic flight path for the player bird.
 
 ## Play
 
@@ -32,6 +32,10 @@ Action buttons are available on screen. A hunt, perch, or nest task continues ev
 After takeoff the bird climbs to cloud height and mostly glides. Active lift produces slower, smoother wingbeats. Hunts use a fast diving approach; landing on a branch uses a slower approach. The city center is about 800 m west-southwest of home; open the large map to see the exact distance and face it. Fly north to cross the mountains and find mountain waterfalls, or east to reach the ocean and great waterfall.
 
 The mini-map shows nearby land, water, trees, the home tree, and the bird's heading. Progress is saved locally per seed. Add `?seed=123456` to the URL to reopen a particular world.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, bug reports, visual checks, asset licensing, and the pull request process. Only the repository owner merges pull requests.
 
 ## Develop
 
