@@ -71,6 +71,34 @@ test('3D world constructs, streams terrain, and animates bird models', () => {
   }
 });
 
+test('bird choices have distinct silhouettes and weather updates the scene', () => {
+  const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;
+  globalThis.innerWidth = 900; globalThis.innerHeight = 600;
+  try {
+    const world = createEnvironment(123456, { shadowMap: {} });
+    const bird = createBird(world.home, 123456);
+    const visuals = ['eagle', 'falcon', 'owl', 'kingfisher'].map(species => createBirdVisual({ species }));
+    assert.deepEqual(visuals.map(visual => visual.userData.species), ['eagle', 'falcon', 'owl', 'kingfisher']);
+    assert.ok(visuals[2].children.length > visuals[0].children.length, 'owl should have facial details');
+    assert.ok(visuals[3].scale.x < visuals[0].scale.x, 'kingfisher should be smaller than eagle');
+    for (const visual of visuals) animateBirdVisual(visual, { ...bird, mode: 'flying', speed: 40, flapStrength: .2, wingPhase: 2 }, 1);
+    animateBirdVisual(visuals[1], { ...bird, mode: 'approaching', goal: { kind: 'perch', stage: 'final' }, pitch: -.45, speed: 54, flapStrength: .05, wingPhase: 3 }, 2);
+    assert.ok(visuals[1].rotation.x < -.4, 'falcon must point down during the landing dive');
+    const rain = world.scene.children.find(object => object.userData.kind === 'weather-rain');
+    const snow = world.scene.children.find(object => object.userData.kind === 'weather-snow');
+    world.setWeather('rainy'); world.update(bird, 1);
+    assert.equal(rain.visible, true); assert.equal(snow.visible, false);
+    world.setWeather('snowy'); world.update(bird, 2);
+    assert.equal(rain.visible, false); assert.equal(snow.visible, true);
+    world.setWeather('stormy'); world.update(bird, 3);
+    assert.equal(rain.visible, true);
+    world.setWeather('pleasant'); world.update(bird, 4);
+    assert.equal(rain.visible, false); assert.equal(snow.visible, false);
+  } finally {
+    globalThis.innerWidth = oldWidth; globalThis.innerHeight = oldHeight;
+  }
+});
+
 test('tree distribution makes mixed groves rather than one repeated tree', () => {
   const sites = [];
   for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) sites.push(...treeSites(x, z, 123456));

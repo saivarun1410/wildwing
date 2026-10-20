@@ -3,6 +3,8 @@ import { TILE_SIZE, terrainHeight, landscapeAt, treeSites, fishSites, preySites,
 import { addLandAnimals, updateLandAnimals, addWaterfalls, updateWaterfalls, sharedAnimalGeometry } from './ecosystem.js';
 import { addCity, updateCity } from './city.js';
 import { addVegetation, addGroundDetail, sharedFoliageMaterials, sharedFoliageGeometries } from './foliage.js';
+import { birdType } from './birds.js';
+import { createWeatherEffects, weatherType, WEATHER_TYPES } from './weather.js';
 
 const color = hex => new THREE.Color(hex);
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -43,9 +45,9 @@ function makeSky(scene) {
   cloudMap.needsUpdate = true;
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false,
-    uniforms: { sunDirection: { value: v(-.7, .37, -.45).normalize() }, fogColor: { value: color(0xb4c2c2) }, night: { value: 0 }, cloudMap: { value: cloudMap }, cloudAmount: { value: 0 } },
+    uniforms: { sunDirection: { value: v(-.7, .37, -.45).normalize() }, fogColor: { value: color(0xb4c2c2) }, night: { value: 0 }, cloudMap: { value: cloudMap }, cloudAmount: { value: 0 }, weatherColor: { value: color(0xb4c2c2) }, cloudCover: { value: 0 }, flash: { value: 0 } },
     vertexShader: `varying vec3 vDir; void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-    fragmentShader: `varying vec3 vDir; uniform vec3 sunDirection; uniform vec3 fogColor; uniform float night; uniform sampler2D cloudMap; uniform float cloudAmount;
+    fragmentShader: `varying vec3 vDir; uniform vec3 sunDirection; uniform vec3 fogColor; uniform float night; uniform sampler2D cloudMap; uniform float cloudAmount; uniform vec3 weatherColor; uniform float cloudCover; uniform float flash;
       void main(){ float y=clamp(vDir.y,0.0,1.0); vec3 mid=vec3(.49,.68,.78); vec3 zenith=vec3(.25,.48,.72);
       vec3 c=mix(fogColor,mid,smoothstep(.0,.48,y)); c=mix(c,zenith,smoothstep(.3,1.0,y));
       float u=atan(vDir.z,vDir.x)/6.2831853+.5;
@@ -59,7 +61,10 @@ function makeSky(scene) {
       float glow=pow(max(dot(normalize(vDir),normalize(sunDirection)),0.0),14.0);
       float sun=pow(max(dot(normalize(vDir),normalize(sunDirection)),0.0),730.0);
       c+=vec3(1.0,.48,.18)*glow*.35+vec3(1.0,.85,.59)*sun*1.7;
-      c=mix(c, mix(vec3(.065,.10,.19),vec3(.012,.025,.075),y),night); gl_FragColor=vec4(c,1.0);}`
+      c=mix(c, mix(vec3(.065,.10,.19),vec3(.012,.025,.075),y),night);
+      vec3 overcast=mix(weatherColor,vec3(.055,.075,.105),night);
+      c=mix(c,overcast,cloudCover*(.72+.22*smoothstep(.05,.8,y)));
+      c+=vec3(.55,.66,.8)*flash*.75; gl_FragColor=vec4(c,1.0);}`
   });
   if (typeof document !== 'undefined') {
     new THREE.TextureLoader().load('/sky-wisps.png', texture => {
@@ -299,7 +304,7 @@ export function createEnvironment(seed, renderer) {
   const sun = new THREE.DirectionalLight(0xffd3a2, 2.6); sun.position.set(-75, 150, -105); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -85; sun.shadow.camera.right = 85; sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
   sun.shadow.camera.near = .5; sun.shadow.camera.far = 380; sun.shadow.bias = -.0003; scene.add(sun, sun.target);
-  const sky = makeSky(scene), celestial = makeCelestial(scene, seed);
+  const sky = makeSky(scene), celestial = makeCelestial(scene, seed), weatherEffects = createWeatherEffects(scene, seed);
   const waveTexture = makeWaveTexture(seed);
   const waterGeometry = new THREE.PlaneGeometry(2800, 2800, 96, 96); waterGeometry.rotateX(-Math.PI / 2);
   const water = mesh(waterGeometry, new THREE.MeshPhysicalMaterial({ color: 0x4a7c8b, metalness: .22, roughness: .21, transparent: true, opacity: .7, clearcoat: .55, bumpMap: waveTexture, bumpScale: .32, side: THREE.DoubleSide, depthWrite: false }), scene, 0, .04, 0);
@@ -351,9 +356,11 @@ export function createEnvironment(seed, renderer) {
     }
   }
   refresh(home.branch.x, home.branch.z);
-  let lastNestProgress = -1, lastEcology = -1, skyMode = 'cycle', nightLevel = 0;
+  let lastNestProgress = -1, lastEcology = -1, skyMode = 'cycle', nightLevel = 0, weatherKind = 'pleasant';
   function toggleNight() { skyMode = nightLevel > .5 ? 'day' : 'night'; nightLevel = skyMode === 'night' ? 1 : 0; return skyMode === 'night'; }
   function isNight() { return nightLevel > .5; }
+  function setWeather(kind) { weatherKind = WEATHER_TYPES[kind] ? kind : 'pleasant'; return weatherKind; }
+  function getWeather() { return weatherKind; }
   function update(bird, time) {
     refresh(bird.x, bird.z);
     sky.position.set(bird.x, bird.y, bird.z);
@@ -365,14 +372,22 @@ export function createEnvironment(seed, renderer) {
     const sunDirection = v(Math.cos(angle), elevation, -.22).normalize();
     celestial.sun.position.copy(sunDirection).multiplyScalar(430);
     celestial.moon.position.copy(sunDirection).multiplyScalar(-430);
-    celestial.starMaterial.opacity = night * .9;
+    const conditions = weatherType(weatherKind);
+    const flash = weatherEffects.update(weatherKind, bird, time);
+    celestial.starMaterial.opacity = night * .9 * (1 - conditions.clouds);
+    celestial.sun.visible = conditions.clouds < .8 && night < .9;
+    celestial.moon.visible = night > .2 && conditions.clouds < .8;
     grandFalls.spray.material.opacity = .37 + Math.sin(time * 2.5) * .04;
     grandFalls.ribbons.forEach((ribbon, i) => { ribbon.material.opacity = (i < 2 ? .77 : .55) + Math.sin(time * 2.8 + i) * .025; });
     sky.material.uniforms.sunDirection.value.copy(sunDirection);
     sky.material.uniforms.night.value = night;
-    hemi.intensity = 2.1 - night * 1.55;
-    sun.intensity = 2.6 - night * 2.42;
-    scene.fog.color.copy(color(0xb4c2c2)).lerp(color(0x24334a), night);
+    sky.material.uniforms.weatherColor.value.setHex(conditions.fog);
+    sky.material.uniforms.cloudCover.value = conditions.clouds;
+    sky.material.uniforms.flash.value = flash;
+    hemi.intensity = (2.1 - night * 1.55) * conditions.light + flash * 2.2;
+    sun.intensity = (2.6 - night * 2.42) * conditions.light + flash * 3;
+    scene.fog.color.copy(color(conditions.fog)).lerp(color(0x24334a), night);
+    scene.fog.density = conditions.density;
     sky.material.uniforms.fogColor.value.copy(scene.fog.color);
     water.position.set(bird.x, .04 + Math.sin(time * 1.2) * .035, bird.z);
     waveTexture.offset.set(time * .004, time * .002);
@@ -389,7 +404,7 @@ export function createEnvironment(seed, renderer) {
       lastNestProgress = bird.nestProgress;
     }
   }
-  return { scene, camera, home, sites, update, refresh, consume, homeVisual, toggleNight, isNight };
+  return { scene, camera, home, sites, update, refresh, consume, homeVisual, toggleNight, isNight, setWeather, getWeather };
 }
 
 function feather(parent, x, y, z, sx, sy, sz, material, tilt = 0) {
@@ -398,20 +413,21 @@ function feather(parent, x, y, z, sx, sy, sz, material, tilt = 0) {
 }
 
 export function createBirdVisual({ small = false, species = 'eagle' } = {}) {
+  const profile = birdType(species);
   const root = new THREE.Group();
-  const dark = new THREE.MeshStandardMaterial({ color: species === 'kingfisher' ? 0x1c748b : 0x4b352a, roughness: .88 });
-  const mid = new THREE.MeshStandardMaterial({ color: species === 'kingfisher' ? 0x2e91a5 : 0x76513a, roughness: .86 });
-  const light = new THREE.MeshStandardMaterial({ color: species === 'kingfisher' ? 0xc7733e : 0xe7dbba, roughness: .9 });
-  const gold = new THREE.MeshStandardMaterial({ color: 0xd3a34d, roughness: .7 });
+  const dark = new THREE.MeshStandardMaterial({ color: profile.dark, roughness: .88 });
+  const mid = new THREE.MeshStandardMaterial({ color: profile.mid, roughness: .86 });
+  const light = new THREE.MeshStandardMaterial({ color: profile.light, roughness: .9 });
+  const gold = new THREE.MeshStandardMaterial({ color: profile.beak, roughness: .7 });
   const eye = new THREE.MeshPhysicalMaterial({ color: 0x111716, roughness: .1, clearcoat: 1 });
-  feather(root, 0, 0, 0, .75, .56, 1.48, dark);
-  feather(root, 0, -.23, -.48, .55, .34, .93, light);
+  feather(root, 0, 0, 0, .75 * profile.body, .56 * profile.body, 1.48, dark);
+  feather(root, 0, -.23, -.48, .55 * profile.body, .34, .93, light);
   feather(root, 0, .31, -1.14, .47, .46, .53, light);
   feather(root, 0, -.03, -.86, .5, .32, .64, mid);
   for (let i = -2; i <= 2; i++) feather(root, i * .18, -.31, -.76 + Math.abs(i) * .09, .16, .11, .42, light, i * .11);
-  const beak = mesh(new THREE.ConeGeometry(.19, .62, 5), gold, root, 0, .12, -1.79); beak.rotation.x = -Math.PI / 2;
+  const beak = mesh(new THREE.ConeGeometry(species === 'kingfisher' ? .12 : .19, .62 * profile.beakLength, 7), gold, root, 0, .12, -1.79 - .19 * (profile.beakLength - 1)); beak.rotation.x = -Math.PI / 2;
   for (let i = -3; i <= 3; i++) {
-    const tail = feather(root, i * .18, .04, 1.82 + (3 - Math.abs(i)) * .13, .16, .07, .88, i % 2 ? dark : mid, i * .13);
+    const tail = feather(root, i * .18, .04, 1.82 + (3 - Math.abs(i)) * .13 * profile.tail, .16, .07, .88 * profile.tail, i % 2 ? dark : mid, i * .13);
     tail.rotation.x = -.09;
   }
   const feet = [];
@@ -426,14 +442,14 @@ export function createBirdVisual({ small = false, species = 'eagle' } = {}) {
   }
   const wings = [];
   for (const sign of [-1, 1]) {
-    const pivot = new THREE.Group(); pivot.position.set(sign * .53, .13, -.26); root.add(pivot); wings.push(pivot);
+    const pivot = new THREE.Group(); pivot.position.set(sign * .53 * profile.body, .13, -.26); pivot.scale.x = profile.wingSpan; root.add(pivot); wings.push(pivot);
     const outline = [[0, -.48], [.72, -.71], [1.55, -.66], [2.38, -.47], [3.12, -.27], [3.44, .12], [3.1, .43], [2.23, .68], [1.25, .78], [0, .55]];
     const positions = [sign * 1.48, .08, .02];
     outline.forEach(([x, z]) => positions.push(sign * x, .02 + Math.sin(x / 3.5 * Math.PI) * .12, z));
     const indices = [];
     for (let i = 0; i < outline.length; i++) indices.push(0, i + 1, (i + 1) % outline.length + 1);
     const wingGeometry = new THREE.BufferGeometry(); wingGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); wingGeometry.setIndex(indices); wingGeometry.computeVertexNormals();
-    const wing = mesh(wingGeometry, new THREE.MeshStandardMaterial({ color: species === 'kingfisher' ? 0x267c94 : 0x4b372d, roughness: .92, side: THREE.DoubleSide }), pivot);
+    const wing = mesh(wingGeometry, new THREE.MeshStandardMaterial({ color: profile.wing, roughness: .92, side: THREE.DoubleSide }), pivot);
     wing.castShadow = true;
     for (let i = 0; i < 7; i++) feather(pivot, sign * (.5 + i * .34), .13, -.36 + i * .045, .24, .045, .38, i % 2 ? light : mid, sign * .1);
     const featherShape = new THREE.Shape();
@@ -446,17 +462,30 @@ export function createBirdVisual({ small = false, species = 'eagle' } = {}) {
       primary.castShadow = false;
     }
   }
-  if (small) root.scale.setScalar(species === 'kingfisher' ? .48 : .68);
-  root.userData.wings = wings; root.userData.feet = feet;
+  if (species === 'owl') {
+    const face = new THREE.MeshStandardMaterial({ color: 0xd7c6a5, roughness: 1 });
+    for (const sign of [-1, 1]) {
+      feather(root, sign * .24, .42, -1.38, .3, .31, .12, face);
+      feather(root, sign * .25, .44, -1.51, .085, .095, .055, eye);
+      feather(root, sign * .4, .8, -1.12, .13, .26, .12, dark, sign * .3);
+    }
+  }
+  if (species === 'falcon') {
+    for (const sign of [-1, 1]) feather(root, sign * .43, .18, -1.37, .11, .3, .13, dark, sign * .17);
+  }
+  root.scale.setScalar(profile.scale * (small ? .68 : 1));
+  root.userData.wings = wings; root.userData.feet = feet; root.userData.species = species;
   return root;
 }
 
 export function animateBirdVisual(visual, bird, time) {
   visual.position.set(bird.x, bird.y, bird.z);
   const hunting = bird.goal?.kind === 'fish' || bird.goal?.kind === 'prey';
-  visual.rotation.set(-bird.pitch + (hunting ? .17 : 0), -bird.heading, bird.bank, 'YXZ');
+  const landing = (bird.goal?.kind === 'perch' || bird.goal?.kind === 'nest') && bird.goal.stage === 'final';
+  visual.rotation.set(bird.pitch + (hunting ? -.08 : 0), -bird.heading, bird.bank, 'YXZ');
   const strength = bird.flapStrength ?? .3;
-  const flap = bird.mode === 'perched' ? .07 + Math.sin(time * 1.4) * .015 : hunting ? .09 + Math.sin(bird.wingPhase) * .08 : .1 + Math.sin(bird.wingPhase) * .45 * strength;
+  const flapRate = birdType(visual.userData.species).flapRate;
+  const flap = bird.mode === 'perched' ? .07 + Math.sin(time * 1.4) * .015 : hunting || landing ? .08 + Math.sin(bird.wingPhase * flapRate) * .07 : .1 + Math.sin(bird.wingPhase * flapRate) * .45 * strength;
   visual.userData.wings[0].rotation.z = flap;
   visual.userData.wings[1].rotation.z = -flap;
   const delta = visual.userData.lastTime === undefined ? 1 : Math.max(0, Math.min(.05, time - visual.userData.lastTime));
@@ -466,5 +495,5 @@ export function animateBirdVisual(visual, bird, time) {
   visual.userData.wings[1].rotation.y += (-fold - visual.userData.wings[1].rotation.y) * Math.min(1, delta * 5);
   visual.userData.wings[0].rotation.x = Math.sin(bird.wingPhase * .5) * .05;
   visual.userData.wings[1].rotation.x = Math.sin(bird.wingPhase * .5) * .05;
-  visual.userData.feet.forEach((foot, i) => { foot.rotation.x = hunting ? -.65 + Math.sin(time * 14 + i) * .06 : 0; });
+  visual.userData.feet.forEach((foot, i) => { foot.rotation.x = hunting || landing ? -.65 + Math.sin(time * 14 + i) * .06 : 0; });
 }

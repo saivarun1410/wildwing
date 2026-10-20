@@ -67,6 +67,31 @@ test('bird can hunt water, perch, and return home', () => {
   assert.ok(until(bird, () => bird.mode === 'perched' && Math.hypot(bird.x - home.branch.x, bird.z - home.branch.z) < 2), 'home approach should finish');
 });
 
+test('falcon landing from cloud height follows a forward descending approach', () => {
+  const bird = createBird(home, seed);
+  bird.species = 'falcon'; bird.mode = 'flying'; bird.perchSite = null;
+  bird.x = home.branch.x + 80; bird.z = home.branch.z + 20;
+  bird.y = 125; bird.speed = 35;
+  assert.ok(issueCommand(bird, 'home', world).ok);
+  let finalFrames = 0, descended = false, pitchedDown = false, fastest = 0;
+  let previous = { x: bird.x, y: bird.y, z: bird.z };
+  for (let i = 0; i < 1500 && bird.mode !== 'perched'; i++) {
+    updateBird(bird, idle, 1 / 60);
+    if (bird.goal?.stage === 'final') {
+      finalFrames++;
+      const travel = Math.hypot(bird.x - previous.x, bird.z - previous.z);
+      assert.ok(travel > .01, 'final approach should keep moving forward');
+      descended ||= bird.y < previous.y - .01;
+      pitchedDown ||= bird.pitch < -.12;
+      fastest = Math.max(fastest, bird.speed);
+    }
+    previous = { x: bird.x, y: bird.y, z: bird.z };
+  }
+  assert.equal(bird.mode, 'perched');
+  assert.ok(finalFrames > 30 && descended && pitchedDown);
+  assert.ok(fastest > 45, 'falcon should carry speed into its dive');
+});
+
 test('one nest command gathers and places five separate twigs', () => {
   const bird = createBird(home, seed);
   assert.ok(issueCommand(bird, 'build nest', world).ok);

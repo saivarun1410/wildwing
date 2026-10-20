@@ -3,6 +3,8 @@ import { createEnvironment, createBirdVisual, animateBirdVisual } from './scene.
 import { createBird, issueCommand, updateBird } from './simulation.js';
 import { CITY, terrainHeight, landscapeAt, hash2, nearestSite } from './world.js';
 import { mapLandmarks, mapDistance, mapHeading, mapBearing, mapPoint } from './map.js';
+import { BIRD_TYPES, birdIds } from './birds.js';
+import { WEATHER_TYPES, weatherIds } from './weather.js';
 import './style.css';
 
 const $ = selector => document.querySelector(selector);
@@ -27,9 +29,12 @@ try {
 
 const world = createEnvironment(seed, renderer);
 const bird = createBird(world.home, seed);
+let selectedBird = 'eagle', selectedWeather = 'pleasant';
 try {
   const saved = JSON.parse(localStorage.getItem(`wildwing:${seed}`) || 'null');
   if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) && Number.isFinite(saved.z)) {
+    if (BIRD_TYPES[saved.species]) selectedBird = saved.species;
+    if (WEATHER_TYPES[saved.weather]) selectedWeather = saved.weather;
     bird.x = saved.x; bird.y = saved.y; bird.z = saved.z;
     bird.heading = Number.isFinite(saved.heading) ? saved.heading : bird.heading;
     bird.nestProgress = Math.max(0, Math.min(5, Number(saved.nestProgress) || 0));
@@ -43,14 +48,16 @@ try {
   }
 } catch { /* Optional browser storage. */ }
 
-const player = createBirdVisual(); world.scene.add(player);
+bird.species = selectedBird;
+world.setWeather(selectedWeather);
+let player = createBirdVisual({ species: selectedBird }); world.scene.add(player);
 const ambient = Array.from({ length: 7 }, (_, i) => {
   const species = i < 3 ? 'kingfisher' : 'eagle';
   const visual = createBirdVisual({ small: true, species }); world.scene.add(visual);
   return { visual, x: (i - 3) * 32, y: 20 + i * 3, z: -35 - i * 20, heading: 0, bank: 0, pitch: 0, wingPhase: i * 2, mode: 'flying', species, anchorX: (i - 3) * 55, anchorZ: -35 - i * 24 };
 });
 
-const key = new Set();
+const key = new Set(), mobileHeld = new Set();
 let inputRevision = 0, taskStartRevision = 0;
 let pointerTurn = 0, pointerClimb = 0, dragging = false, lastPointer = null;
 let running = false, time = 0, lastFrame = 0, lastHud = 0, lastMap = 0, lastSave = 0, lastChirp = 0;
@@ -59,6 +66,45 @@ const effects = [];
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const landmarks = mapLandmarks(seed);
 let mapOpen = false, mapSpan = 2400, mapCenter = { x: 0, z: 0 }, selectedPlace = 'city', mapCacheKey = '';
+let mobilePanel = null;
+
+for (const id of ['birdSelectMenu', 'birdSelectHud', 'birdSelectMobile']) {
+  const select = $(`#${id}`);
+  for (const kind of birdIds) select.add(new Option(BIRD_TYPES[kind].label, kind));
+  select.value = selectedBird;
+  select.addEventListener('change', () => chooseBird(select.value));
+}
+for (const id of ['weatherSelectMenu', 'weatherSelectHud', 'weatherSelectMobile']) {
+  const select = $(`#${id}`);
+  for (const kind of weatherIds) select.add(new Option(WEATHER_TYPES[kind].label, kind));
+  select.value = selectedWeather;
+  select.addEventListener('change', () => chooseWeather(select.value));
+}
+
+function chooseBird(kind) {
+  if (!BIRD_TYPES[kind] || kind === selectedBird) return;
+  selectedBird = kind; bird.species = kind;
+  world.scene.remove(player);
+  const geometries = new Set(), materials = new Set();
+  player.traverse(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    if (object.material) materials.add(object.material);
+  });
+  geometries.forEach(geometry => geometry.dispose());
+  materials.forEach(material => material.dispose());
+  player = createBirdVisual({ species: kind }); world.scene.add(player);
+  for (const id of ['birdSelectMenu', 'birdSelectHud', 'birdSelectMobile']) $(`#${id}`).value = kind;
+  if (running) notice(`Flying as a ${BIRD_TYPES[kind].label.toLowerCase()}.`);
+  saveProgress(); updateHud();
+}
+
+function chooseWeather(kind) {
+  if (!WEATHER_TYPES[kind]) return;
+  selectedWeather = world.setWeather(kind);
+  for (const id of ['weatherSelectMenu', 'weatherSelectHud', 'weatherSelectMobile']) $(`#${id}`).value = selectedWeather;
+  if (running) notice(`${WEATHER_TYPES[kind].label} weather.`);
+  saveProgress(); updateHud();
+}
 
 function notice(message) {
   const el = $('#notice'); el.textContent = message; el.classList.add('visible');
@@ -74,6 +120,8 @@ function toggleDayNight() {
 function runCommand(command) {
   const result = issueCommand(bird, command, world.sites);
   notice(result.message);
+  if (mobilePanel === 'actions') closeMobilePanel();
+  if (command === 'fly' && mobilePanel) closeMobilePanel();
   if (result.ok) {
     if (bird.mode === 'approaching') taskStartRevision = inputRevision;
     updateHud();
@@ -84,6 +132,7 @@ function runCommand(command) {
 document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => runCommand(button.dataset.command)));
 $('#enterButton').addEventListener('click', () => {
   $('#welcome').classList.add('hidden'); $('#hud').classList.add('visible'); $('#hud').setAttribute('aria-hidden', 'false');
+  $('#app').classList.add('playing');
   running = true; $('#loading').classList.add('hidden'); startAudio();
   if (audio) audio.master.gain.setTargetAtTime(soundOn ? .9 : 0, audio.context.currentTime, .3);
 });
@@ -91,10 +140,11 @@ function quitToMenu() {
   if (!running) return;
   saveProgress();
   running = false;
-  key.clear(); pointerTurn = pointerClimb = 0; dragging = false; lastPointer = null;
+  key.clear(); mobileHeld.clear(); closeMobilePanel(); pointerTurn = pointerClimb = 0; dragging = false; lastPointer = null;
   if (mapOpen) closeWorldMap();
   $('#help').hidden = true;
   $('#hud').classList.remove('visible'); $('#hud').setAttribute('aria-hidden', 'true');
+  $('#app').classList.remove('playing');
   $('#welcome').classList.remove('hidden');
   $('#enterLabel').textContent = 'Resume playing';
   if (audio) audio.master.gain.setTargetAtTime(0, audio.context.currentTime, .2);
@@ -124,9 +174,43 @@ $('#soundButton').addEventListener('click', () => {
 });
 $('#timeToggle').addEventListener('click', toggleDayNight);
 
+function closeMobilePanel() {
+  mobilePanel = null;
+  mobileHeld.clear();
+  $('#mobileDrawer').hidden = true;
+  document.querySelectorAll('[data-mobile-tab]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  document.querySelectorAll('[data-mobile-panel]').forEach(section => { section.hidden = true; });
+}
+function toggleMobilePanel(kind) {
+  if (mobilePanel === kind) { closeMobilePanel(); return; }
+  mobileHeld.clear();
+  mobilePanel = kind;
+  $('#mobileDrawer').hidden = false;
+  document.querySelectorAll('[data-mobile-tab]').forEach(button => button.setAttribute('aria-expanded', String(button.dataset.mobileTab === kind)));
+  document.querySelectorAll('[data-mobile-panel]').forEach(section => { section.hidden = section.dataset.mobilePanel !== kind; });
+}
+document.querySelectorAll('[data-mobile-tab]').forEach(button => button.addEventListener('click', () => toggleMobilePanel(button.dataset.mobileTab)));
+document.querySelectorAll('[data-hold]').forEach(button => {
+  button.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    button.setPointerCapture(event.pointerId);
+    mobileHeld.add(button.dataset.hold);
+    inputRevision++;
+  });
+  const release = () => mobileHeld.delete(button.dataset.hold);
+  button.addEventListener('pointerup', release);
+  button.addEventListener('pointercancel', release);
+  button.addEventListener('lostpointercapture', release);
+});
+$('#mobileMap').addEventListener('click', () => { closeMobilePanel(); openWorldMap(); });
+$('#mobileTime').addEventListener('click', toggleDayNight);
+$('#mobileSound').addEventListener('click', () => $('#soundButton').click());
+$('#mobileHelp').addEventListener('click', () => { closeMobilePanel(); $('#help').hidden = false; });
+$('#mobileQuit').addEventListener('click', quitToMenu);
+
 addEventListener('keydown', event => {
-  if (event.key === 'Escape') { $('#help').hidden = true; if (mapOpen) closeWorldMap(); return; }
-  if (event.target instanceof HTMLInputElement) return;
+  if (event.key === 'Escape') { $('#help').hidden = true; if (mapOpen) closeWorldMap(); closeMobilePanel(); return; }
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
   if (event.key.toLowerCase() === 'q' && running) { event.preventDefault(); if (!event.repeat) quitToMenu(); return; }
   if (event.key.toLowerCase() === 'm' && running && !event.repeat) { event.preventDefault(); mapOpen ? closeWorldMap() : openWorldMap(); return; }
   if (mapOpen) { event.preventDefault(); return; }
@@ -140,7 +224,7 @@ addEventListener('keydown', event => {
   key.add(event.key.toLowerCase());
 });
 addEventListener('keyup', event => key.delete(event.key.toLowerCase()));
-addEventListener('blur', () => key.clear());
+addEventListener('blur', () => { key.clear(); mobileHeld.clear(); });
 
 const sceneCanvas = renderer.domElement;
 sceneCanvas.addEventListener('pointerdown', event => {
@@ -162,9 +246,9 @@ sceneCanvas.addEventListener('pointerup', endDrag); sceneCanvas.addEventListener
 sceneCanvas.addEventListener('contextmenu', event => event.preventDefault());
 
 function controls() {
-  const turn = (key.has('d') || key.has('arrowright') ? 1 : 0) - (key.has('a') || key.has('arrowleft') ? 1 : 0) + pointerTurn;
-  const climb = (key.has('arrowup') ? 1 : 0) - (key.has('arrowdown') ? 1 : 0) + pointerClimb;
-  return { turn: Math.max(-1, Math.min(1, turn)), climb: Math.max(-1, Math.min(1, climb)), forward: (key.has('w') ? 1 : 0) - (key.has('s') ? 1 : 0), fast: key.has('shift'), flap: key.has(' '), overrideTask: inputRevision > taskStartRevision };
+  const turn = (key.has('d') || key.has('arrowright') || mobileHeld.has('right') ? 1 : 0) - (key.has('a') || key.has('arrowleft') || mobileHeld.has('left') ? 1 : 0) + pointerTurn;
+  const climb = (key.has('arrowup') || mobileHeld.has('up') ? 1 : 0) - (key.has('arrowdown') || mobileHeld.has('down') ? 1 : 0) + pointerClimb;
+  return { turn: Math.max(-1, Math.min(1, turn)), climb: Math.max(-1, Math.min(1, climb)), forward: (key.has('w') || mobileHeld.has('faster') ? 1 : 0) - (key.has('s') || mobileHeld.has('slower') ? 1 : 0), fast: key.has('shift') || mobileHeld.has('boost'), flap: key.has(' ') || mobileHeld.has('flap'), overrideTask: inputRevision > taskStartRevision };
 }
 
 function updateAmbient(dt) {
@@ -235,6 +319,7 @@ function updateHud() {
   $('#compassLabel').textContent = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][((Math.round(bird.heading / (Math.PI / 4)) % 8) + 8) % 8];
   const city = landmarks[0];
   $('#cityRoute').textContent = `CITY CENTER · ${Math.round(mapDistance(bird, city))} M ${mapBearing(bird, city)}`;
+  $('#mobileReadout').textContent = `${BIRD_TYPES[selectedBird].label.toUpperCase()} · ${WEATHER_TYPES[selectedWeather].label.toUpperCase()} · ${bird.mode === 'perched' ? 0 : Math.round(bird.speed)} M/S`;
 }
 
 const map = $('#map'), mapCtx = map.getContext('2d');
@@ -353,7 +438,7 @@ function chirp() {
 }
 
 function saveProgress() {
-  try { localStorage.setItem(`wildwing:${seed}`, JSON.stringify({ x: bird.x, y: bird.y, z: bird.z, heading: bird.heading, nestProgress: bird.nestProgress, catches: bird.catches })); } catch { /* Optional storage. */ }
+  try { localStorage.setItem(`wildwing:${seed}`, JSON.stringify({ x: bird.x, y: bird.y, z: bird.z, heading: bird.heading, nestProgress: bird.nestProgress, catches: bird.catches, species: selectedBird, weather: selectedWeather })); } catch { /* Optional storage. */ }
 }
 function spawnEffect(event) {
   if (event.type !== 'fish' && event.type !== 'prey') return;
