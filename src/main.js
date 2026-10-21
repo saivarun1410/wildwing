@@ -130,11 +130,17 @@ function runCommand(command) {
 }
 
 document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => runCommand(button.dataset.command)));
-$('#enterButton').addEventListener('click', () => {
+function startGame() {
+  if (running) return;
   $('#welcome').classList.add('hidden'); $('#hud').classList.add('visible'); $('#hud').setAttribute('aria-hidden', 'false');
   $('#app').classList.add('playing');
   running = true; $('#loading').classList.add('hidden'); startAudio();
   if (audio) audio.master.gain.setTargetAtTime(soundOn ? .9 : 0, audio.context.currentTime, .3);
+}
+$('#welcome').addEventListener('click', startGame);
+$('#welcome').addEventListener('keydown', event => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault(); event.stopPropagation(); startGame();
 });
 function quitToMenu() {
   if (!running) return;
@@ -146,9 +152,10 @@ function quitToMenu() {
   $('#hud').classList.remove('visible'); $('#hud').setAttribute('aria-hidden', 'true');
   $('#app').classList.remove('playing');
   $('#welcome').classList.remove('hidden');
-  $('#enterLabel').textContent = 'Resume playing';
+  $('#entryLabel').textContent = 'Click or tap anywhere to resume · Enter';
+  $('#welcome').setAttribute('aria-label', 'Resume playing Wildwing');
   if (audio) audio.master.gain.setTargetAtTime(0, audio.context.currentTime, .2);
-  $('#enterButton').focus();
+  $('#welcome').focus();
 }
 $('#helpButton').addEventListener('click', () => { $('#help').hidden = false; });
 $('#closeHelp').addEventListener('click', () => { $('#help').hidden = true; });
@@ -209,6 +216,9 @@ $('#mobileHelp').addEventListener('click', () => { closeMobilePanel(); $('#help'
 $('#mobileQuit').addEventListener('click', quitToMenu);
 
 addEventListener('keydown', event => {
+  if (!running && event.target === document.body && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault(); startGame(); return;
+  }
   if (event.key === 'Escape') { $('#help').hidden = true; if (mapOpen) closeWorldMap(); closeMobilePanel(); return; }
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
   if (event.key.toLowerCase() === 'q' && running) { event.preventDefault(); if (!event.repeat) quitToMenu(); return; }

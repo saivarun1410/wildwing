@@ -10,7 +10,7 @@ The world streams terrain and wildlife around the bird as it travels. Open meado
 
 ## Play
 
-Open the [live demo](https://wildwing.pages.dev/?seed=123456). A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
+Open the [live demo](https://wildwing.pages.dev/?seed=123456), then click or tap the start scene or press `Enter`. A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
 
 | Control | Action |
 | --- | --- |
