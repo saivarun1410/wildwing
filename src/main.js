@@ -68,13 +68,13 @@ const landmarks = mapLandmarks(seed);
 let mapOpen = false, mapSpan = 2400, mapCenter = { x: 0, z: 0 }, selectedPlace = 'city', mapCacheKey = '';
 let mobilePanel = null;
 
-for (const id of ['birdSelectMenu', 'birdSelectHud', 'birdSelectMobile']) {
+for (const id of ['birdSelectHud', 'birdSelectMobile']) {
   const select = $(`#${id}`);
   for (const kind of birdIds) select.add(new Option(BIRD_TYPES[kind].label, kind));
   select.value = selectedBird;
   select.addEventListener('change', () => chooseBird(select.value));
 }
-for (const id of ['weatherSelectMenu', 'weatherSelectHud', 'weatherSelectMobile']) {
+for (const id of ['weatherSelectHud', 'weatherSelectMobile']) {
   const select = $(`#${id}`);
   for (const kind of weatherIds) select.add(new Option(WEATHER_TYPES[kind].label, kind));
   select.value = selectedWeather;
@@ -93,7 +93,7 @@ function chooseBird(kind) {
   geometries.forEach(geometry => geometry.dispose());
   materials.forEach(material => material.dispose());
   player = createBirdVisual({ species: kind }); world.scene.add(player);
-  for (const id of ['birdSelectMenu', 'birdSelectHud', 'birdSelectMobile']) $(`#${id}`).value = kind;
+  for (const id of ['birdSelectHud', 'birdSelectMobile']) $(`#${id}`).value = kind;
   if (running) notice(`Flying as a ${BIRD_TYPES[kind].label.toLowerCase()}.`);
   saveProgress(); updateHud();
 }
@@ -101,7 +101,7 @@ function chooseBird(kind) {
 function chooseWeather(kind) {
   if (!WEATHER_TYPES[kind]) return;
   selectedWeather = world.setWeather(kind);
-  for (const id of ['weatherSelectMenu', 'weatherSelectHud', 'weatherSelectMobile']) $(`#${id}`).value = selectedWeather;
+  for (const id of ['weatherSelectHud', 'weatherSelectMobile']) $(`#${id}`).value = selectedWeather;
   if (running) notice(`${WEATHER_TYPES[kind].label} weather.`);
   saveProgress(); updateHud();
 }

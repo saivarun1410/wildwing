@@ -4,7 +4,7 @@
 
 Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across a procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
-Choose an eagle, falcon, owl, or kingfisher from the start screen or the in-game Bird selector. Choose pleasant, sunny, cloudy, rainy, snowy, stormy, or misty weather from the Weather selector. Bird and weather choices are saved with progress for each world seed.
+After starting, choose an eagle, falcon, owl, or kingfisher from the in-game Bird selector. Choose pleasant, sunny, cloudy, rainy, snowy, stormy, or misty weather from the Weather selector. Bird and weather choices are saved with progress for each world seed.
 
 The world streams terrain and wildlife around the bird as it travels. Open meadows, mixed woodland, ponds, lakes, vegetated mountain slopes, snowy summits, a broad eastern ocean, waterfalls, wispy clouds, birds, and roaming land animals are generated from a shareable world seed. A city to the west-southwest has streets, towers, and moving cars and trucks. A large coastal waterfall is a landmark near the ocean. A day/night cycle brings a visible sun, moon, and stars. There is no fixed map edge and no automatic flight path for the player bird.
 
