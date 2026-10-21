@@ -152,7 +152,7 @@ function quitToMenu() {
   $('#hud').classList.remove('visible'); $('#hud').setAttribute('aria-hidden', 'true');
   $('#app').classList.remove('playing');
   $('#welcome').classList.remove('hidden');
-  $('#entryLabel').textContent = 'Click or tap anywhere to resume · Enter';
+  $('#entryLabel').textContent = 'Click or tap the scene to resume · Enter';
   $('#welcome').setAttribute('aria-label', 'Resume playing Wildwing');
   if (audio) audio.master.gain.setTargetAtTime(0, audio.context.currentTime, .2);
   $('#welcome').focus();
