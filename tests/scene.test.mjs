@@ -6,13 +6,35 @@ import * as THREE from 'three';
 import { addLandAnimals, updateLandAnimals, addWaterfalls } from '../src/ecosystem.js';
 import { addCity, updateCity } from '../src/city.js';
 import { treeSites, terrainHeight, landscapeAt, mountainFallsSites } from '../src/world.js';
-import { roundParticleTexture } from '../src/weather.js';
+import { createWeatherEffects, roundParticleTexture } from '../src/weather.js';
 
 test('snow and stars use a soft round particle sprite', () => {
   const texture = roundParticleTexture();
   const pixels = texture.image.data;
   assert.equal(pixels[3], 0, 'corners must be transparent');
   assert.equal(pixels[(16 * 32 + 16) * 4 + 3], 255, 'particle center must be opaque');
+});
+
+test('snow fills the camera view instead of clustering around the bird', () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(65, 16 / 9, .1, 900);
+  camera.position.set(90, 45, 130);
+  camera.lookAt(120, 35, 70);
+  camera.updateMatrixWorld();
+  const { snow, update } = createWeatherEffects(scene, 123456);
+  update('snowy', { x: 120, y: 35, z: 70 }, camera, 5);
+  snow.updateMatrixWorld();
+  const positions = snow.geometry.attributes.position;
+  const thirds = [0, 0, 0], vertical = [0, 0];
+  const point = new THREE.Vector3();
+  for (let i = 0; i < positions.count; i++) {
+    point.fromBufferAttribute(positions, i).applyMatrix4(snow.matrixWorld).project(camera);
+    if (Math.abs(point.x) > 1 || Math.abs(point.y) > 1) continue;
+    thirds[Math.min(2, Math.floor((point.x + 1) * 1.5))]++;
+    vertical[point.y < 0 ? 0 : 1]++;
+  }
+  assert.ok(thirds.every(count => count > 25), `snow should cover left, center, and right: ${thirds}`);
+  assert.ok(vertical.every(count => count > 60), `snow should cover the full height: ${vertical}`);
 });
 
 test('3D world constructs, streams terrain, and animates bird models', () => {

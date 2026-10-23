@@ -39,7 +39,7 @@ export function createWeatherEffects(scene, seed) {
   const snow = new THREE.Points(snowGeometry, new THREE.PointsMaterial({ color: 0xf5f8f6, map: roundParticleTexture(), size: .48, sizeAttenuation: true, transparent: true, opacity: .88, depthWrite: false, fog: true }));
   snow.frustumCulled = false; snow.visible = false; snow.userData.kind = 'weather-snow'; scene.add(snow);
 
-  function update(kind, bird, time) {
+  function update(kind, bird, camera, time) {
     const preset = weatherType(kind);
     rain.visible = preset.rain > 0;
     snow.visible = preset.snow > 0;
@@ -58,13 +58,18 @@ export function createWeatherEffects(scene, seed) {
       points.needsUpdate = true;
     }
     if (snow.visible) {
-      snow.position.set(bird.x, bird.y, bird.z);
+      snow.position.copy(camera.position);
+      snow.quaternion.copy(camera.quaternion);
       const points = snowGeometry.attributes.position;
+      const halfFov = THREE.MathUtils.degToRad(camera.fov) / 2;
       for (let i = 0; i < preset.snow; i++) {
-        const fall = ((hash2(i, 4, seed + 2203) * 65 - time * 3.7) % 65 + 65) % 65 - 22;
-        const x = (hash2(i, 5, seed + 2204) - .5) * 95 + Math.sin(time * .7 + i) * 2.2;
-        const z = (hash2(i, 6, seed + 2205) - .5) * 95;
-        points.setXYZ(i, x, fall, z);
+        const depth = 25 + hash2(i, 6, seed + 2205) * 75;
+        const halfHeight = Math.tan(halfFov) * depth * 1.12;
+        const halfWidth = halfHeight * camera.aspect;
+        const span = halfHeight * 2;
+        const fall = ((hash2(i, 4, seed + 2203) * span - time * 3.7) % span + span) % span - halfHeight;
+        const x = (hash2(i, 5, seed + 2204) * 2 - 1) * halfWidth + Math.sin(time * .7 + i) * .7;
+        points.setXYZ(i, x, fall, -depth);
       }
       points.needsUpdate = true;
     }

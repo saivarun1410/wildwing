@@ -373,7 +373,7 @@ export function createEnvironment(seed, renderer) {
     celestial.sun.position.copy(sunDirection).multiplyScalar(430);
     celestial.moon.position.copy(sunDirection).multiplyScalar(-430);
     const conditions = weatherType(weatherKind);
-    const flash = weatherEffects.update(weatherKind, bird, time);
+    const flash = weatherEffects.update(weatherKind, bird, camera, time);
     celestial.starMaterial.opacity = night * .9 * (1 - conditions.clouds);
     celestial.sun.visible = conditions.clouds < .8 && night < .9;
     celestial.moon.visible = night > .2 && conditions.clouds < .8;

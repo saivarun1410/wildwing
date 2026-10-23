@@ -504,9 +504,9 @@ function frame(now) {
     if (time - lastSave > 5) { lastSave = time; saveProgress(); }
     if (time - lastChirp > 3.5 + hash2(Math.floor(time), 4, seed) * 4) { lastChirp = time; chirp(); }
   }
+  updateCamera(dt || .016);
   world.update(bird, time);
   animateBirdVisual(player, bird, time);
-  updateCamera(dt || .016);
   if (now - lastHud > 180) { lastHud = now; updateHud(); }
   if (now - lastMap > 440) { lastMap = now; drawMap(); }
   renderer.render(world.scene, world.camera);
