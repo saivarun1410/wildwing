@@ -2,6 +2,8 @@
 
 [▶ Play the live demo](https://wildwing.pages.dev/) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains, east for the ocean and waterfall, or west-southwest for the city. Press `H`, `J`, or `N` to try hunting and nest building.
 
+![An eagle flying toward snowy mountains and a waterfall in Wildwing](docs/gameplay.jpg)
+
 Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across a procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
 After starting, choose an eagle, falcon, owl, or kingfisher from the in-game Bird selector. Choose pleasant, sunny, cloudy, rainy, snowy, stormy, or misty weather from the Weather selector. Bird and weather choices are saved with progress for each world seed.
