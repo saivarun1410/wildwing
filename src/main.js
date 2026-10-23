@@ -10,9 +10,7 @@ import './style.css';
 const $ = selector => document.querySelector(selector);
 const qs = new URLSearchParams(location.search);
 const fromUrl = Number(qs.get('seed'));
-const seed = Number.isSafeInteger(fromUrl) && fromUrl > 0 ? fromUrl : Math.floor(Math.random() * 900000 + 100000);
-const url = new URL(location.href); url.searchParams.set('seed', seed); history.replaceState(null, '', url);
-$('#worldId').textContent = `WORLD ${String(seed).padStart(6, '0')}`;
+const seed = Number.isSafeInteger(fromUrl) && fromUrl > 0 ? fromUrl : 123456;
 
 const canvasHost = $('#scene');
 let renderer;

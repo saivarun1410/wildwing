@@ -1,6 +1,6 @@
 # Wildwing
 
-[▶ Play the live demo](https://wildwing.pages.dev/?seed=123456) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains, east for the ocean and waterfall, or west-southwest for the city. Press `H`, `J`, or `N` to try hunting and nest building.
+[▶ Play the live demo](https://wildwing.pages.dev/) — no installation or account needed. Start playing, press `F` to take off, and use `T` to switch between day and night. Fly north for the snow mountains, east for the ocean and waterfall, or west-southwest for the city. Press `H`, `J`, or `N` to try hunting and nest building.
 
 Wildwing is a playable bird world. Begin on a branch, take flight when you choose, steer across a procedural wilderness, hunt from lakes or meadows, perch in other trees, and gather twigs to build a nest at your home tree.
 
@@ -10,7 +10,7 @@ The world streams terrain and wildlife around the bird as it travels. Open meado
 
 ## Play
 
-Open the [live demo](https://wildwing.pages.dev/?seed=123456), then click or tap the start scene or press `Enter`. A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
+Open the [live demo](https://wildwing.pages.dev/), then click or tap the start scene or press `Enter`. A browser with WebGL support is required. The site runs entirely in the browser; there is no account or server-side game state.
 
 | Control | Action |
 | --- | --- |
@@ -35,7 +35,7 @@ On mobile, the playing screen uses a bottom navigation bar. Tap **Fly** to take 
 
 After takeoff the bird climbs to cloud height and mostly glides. Active lift produces slower, smoother wingbeats. Hunts use a fast diving approach; high branch landings line up for a forward descending glide and flare near the branch. The city center is about 800 m west-southwest of home; open the large map to see the exact distance and face it. Fly north to cross the mountains and find mountain waterfalls, or east to reach the ocean and great waterfall.
 
-The mini-map shows nearby land, water, trees, the home tree, and the bird's heading. Progress is saved locally per seed. Add `?seed=123456` to the URL to reopen a particular world.
+The mini-map shows nearby land, water, trees, the home tree, and the bird's heading. Progress is saved locally per seed. The main URL opens the same default world on every visit. Add `?seed=571558` to the URL to open a particular alternate world.
 
 ## Contributing
 
